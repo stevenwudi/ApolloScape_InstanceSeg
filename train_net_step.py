@@ -1,11 +1,8 @@
-""" Training script for steps_with_decay policy"""
 import matplotlib
-
-matplotlib.use('TkAgg')
 import argparse
 import os
-
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
 import sys
 import pickle
 import resource
@@ -19,7 +16,7 @@ from torch.autograd import Variable
 import cv2
 
 cv2.setNumThreads(0)  # pytorch issue 1355: possible deadlock in dataloader
-import _init_paths  # pylint: disable=unused-import
+import _init_paths    # pylint: disable=unused-import
 import nn as mynn
 import utils.net as net_utils
 import utils.misc as misc_utils
@@ -46,15 +43,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a X-RCNN network')
 
     parser.add_argument('--dataset', dest='dataset', default='wad', help='Dataset to use')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_mask_rcnn_X-101-32x8d-FPN_1x.yaml', help='Config file for training (and optionally testing)')
     parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_mask_rcnn_R-101-FPN_2x.yaml', help='Config file for training (and optionally testing)')
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')
     parser.add_argument('--dataset_dir', default='/media/4tb/CVPR2018_WAD')
     # Optimization
-    # These options has the highest prioity and can overwrite the values in config file
-    # or values set by set_cfgs. `None` means do not overwrite.
+    # These options has the highest prioity and can overwrite the values in config file or values set by set_cfgs. `None` means do not overwrite.
     parser.add_argument('--bs', dest='batch_size', help='Explicitly specify to overwrite the value comed from cfg_file.', type=int)
     parser.add_argument('--nw', dest='num_workers', help='Explicitly specify to overwrite number of workers to load data. Defaults to 4', type=int)
     parser.add_argument('--iter_size', help='Update once every iter_size steps, as in Caffe.', default=1, type=int)
@@ -68,7 +63,8 @@ def parse_args():
     # Resume training: requires same iterations per epoch
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
-    parser.add_argument('--load_ckpt', default='/home/stevenwudi/PycharmProjects/CVPR_2018_WAD/Outputs/e2e_mask_rcnn_R-101-FPN_2x/Jun12-11-45-08_n606_step/ckpt/model_step24999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/home/stevenwudi/PycharmProjects/CVPR_2018_WAD/Outputs/e2e_mask_rcnn_R-101-FPN_2x/Jun12-11-45-08_n606_step/ckpt/model_step24999.pth', help='checkpoint path to load')
 
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
