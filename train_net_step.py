@@ -1,7 +1,6 @@
-import matplotlib
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
 
 import sys
 import pickle
@@ -20,7 +19,7 @@ import _init_paths    # pylint: disable=unused-import
 import nn as mynn
 import utils.net as net_utils
 import utils.misc as misc_utils
-from core.config import cfg, cfg_from_file, assert_and_infer_cfg
+from core.config import cfg, merge_cfg_from_file, assert_and_infer_cfg
 from datasets.roidb import combined_roidb_for_training
 from roi_data.loader import RoiDataLoader, MinibatchSampler, collate_minibatch
 from modeling.model_builder import Generalized_RCNN
@@ -52,7 +51,7 @@ def parse_args():
     # These options has the highest prioity and can overwrite the values in config file or values set by set_cfgs. `None` means do not overwrite.
     parser.add_argument('--bs', dest='batch_size', help='Explicitly specify to overwrite the value comed from cfg_file.', type=int)
     parser.add_argument('--nw', dest='num_workers', help='Explicitly specify to overwrite number of workers to load data. Defaults to 4', type=int)
-    parser.add_argument('--iter_size', help='Update once every iter_size steps, as in Caffe.', default=1, type=int)
+    parser.add_argument('--iter_size', help='Update once every iter_size steps, as in Caffe.', default=2, type=int)
     parser.add_argument('--o', dest='optimizer', help='Training optimizer.', default=None)
     parser.add_argument('--lr', help='Base learning rate.', default=None, type=float)
     parser.add_argument('--lr_decay_gamma', help='Learning rate decay rate.', default=None, type=float)
@@ -106,19 +105,20 @@ def main():
     else:
         raise ValueError("Need Cuda device to run !")
 
-    cfg_from_file(args.cfg_file)
-    cfg.TRAIN.DATASETS = 'wad'
+    merge_cfg_from_file(args.cfg_file)
+
+    # Some manual adjustment for the ApolloScape dataset parameters here
+    cfg.TRAIN.DATASETS = 'ApolloScape'
     cfg.MODEL.NUM_CLASSES = 8
     cfg.TRAIN.MIN_AREA = 49   # 7*7
     cfg.SOLVER.BASE_LR = 0.005
+    cfg.TRAIN.IMS_PER_BATCH = 2
 
-    cfg.TRAIN.IMS_PER_BATCH = 1
     cfg.NUM_GPUS = torch.cuda.device_count()
-    effective_batch_size = cfg.TRAIN.IMS_PER_BATCH * cfg.NUM_GPUS
+    effective_batch_size = cfg.TRAIN.IMS_PER_BATCH * cfg.NUM_GPUS * args.iter_size
 
     ### Adaptively adjust some configs ###
     original_batch_size = cfg.NUM_GPUS * cfg.TRAIN.IMS_PER_BATCH
-    #original_batch_size = 1
     original_ims_per_batch = cfg.TRAIN.IMS_PER_BATCH
     original_num_gpus = cfg.NUM_GPUS
     if args.batch_size is None:

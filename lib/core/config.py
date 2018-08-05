@@ -4,7 +4,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import six
-import os
 import os.path as osp
 import copy
 from ast import literal_eval
@@ -1042,8 +1041,6 @@ def merge_cfg_from_file(cfg_filename):
         yaml_cfg = AttrDict(yaml.load(f))
     _merge_a_into_b(yaml_cfg, __C)
 
-cfg_from_file = merge_cfg_from_file
-
 
 def merge_cfg_from_cfg(cfg_other):
     """Merge `cfg_other` into the global config."""
@@ -1072,8 +1069,6 @@ def merge_cfg_from_list(cfg_list):
             value, d[subkey], subkey, full_key
         )
         d[subkey] = value
-
-cfg_from_list = merge_cfg_from_list
 
 
 def _merge_a_into_b(a, b, stack=None):
