@@ -41,6 +41,11 @@ DATASETS = {
         ANN_FN: '/media/4tb/CVPR2018_WAD/train_label'
     },
 
+    'ApolloScape': {
+        IM_DIR: '/media/samsumg_1tb/ApolloScape',
+        ANN_FN: '/media/samsumg_1tb/ApolloScape'
+    },
+
     'cityscapes_fine_instanceonly_seg_train': {
         IM_DIR:
             _DATA_DIR + '/cityscapes/images',

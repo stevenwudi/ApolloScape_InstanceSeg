@@ -28,11 +28,11 @@ from __future__ import unicode_literals
 import copy
 import logging
 import os
-from tqdm import tqdm
 
 import numpy as np
 import scipy.sparse
 from six.moves import cPickle as pickle
+from tqdm import tqdm
 
 # Must happen before importing COCO API (which imports matplotlib)
 import utils.env as envu
@@ -45,16 +45,14 @@ from pycocotools.coco import COCO
 import utils.boxes as box_utils
 from core.config import cfg
 from utils.timer import Timer
-import utils.keypoints as keypoint_utils
 import utils.segms as segm_utils
 from .dataset_catalog import ANN_FN
 from .dataset_catalog import DATASETS
 from .dataset_catalog import IM_DIR
 from .dataset_catalog import IM_PREFIX
 from .dataloader_wad_cvpr2018 import WAD_CVPR2018
+from .dataloader_apolloscape import ApolloScape
 from PIL import Image
-from matplotlib import pyplot as plt
-
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +75,12 @@ class JsonDataset(object):
         )
         self.debug_timer = Timer()
         self.dataset_name = name
+        if self.dataset_name == 'ApolloScape':
+            self.ApolloScape = ApolloScape()
+            self.classes = ['__background__'] + [c for c in self.ApolloScape.eval_cat]
+            self.num_classes = len(self.ApolloScape.eval_cat) + 1
+            self.keypoints = None
+
         if self.dataset_name == 'wad':
             self.WAD_CVPR2018 = WAD_CVPR2018(dataset_dir)
             self.classes = ['__background__'] + [c for c in self.WAD_CVPR2018.eval_cat]
@@ -157,11 +161,12 @@ class JsonDataset(object):
                 roidb = []
                 for entry in image_ids:
                     roidb.append(self._prep_roidb_entry_wad(entry))
-
-            if cfg.TRAIN.USE_FLIPPED:
-                logger.info('Appending horizontally-flipped training examples...')
-                extend_with_flipped_entries(roidb)
-            logger.info('Loaded dataset: {:s}'.format(self.name))
+            elif self.dataset_name == 'ApolloScape':
+                # image_ids = os.listdir(self.WAD_CVPR2018.train_image_dir)[:10]
+                image_ids = self.ApolloScape.get_train_img_list()
+                roidb = []
+                for entry in image_ids:
+                    roidb.append(self._prep_roidb_entry_ApolloScape(entry))
 
             if gt:
                 self.debug_timer.tic()
@@ -170,14 +175,21 @@ class JsonDataset(object):
                         self._add_gt_annotations(entry)
                     elif self.dataset_name == 'wad':
                         self._add_gt_annotations_wad(entry)
-                logger.debug(
-                    '_add_gt_annotations took {:.3f}s'.
-                        format(self.debug_timer.toc(average=False))
-                )
-                with open(cache_filepath, 'wb') as fp:
-                    pickle.dump(roidb, fp, pickle.HIGHEST_PROTOCOL)
-                logger.info('Cache ground truth roidb to %s', cache_filepath)
+                    elif self.dataset_name == 'ApolloScape':
+                        self._add_gt_annotations_ApolloScape(entry)
+                logger.debug('_add_gt_annotations took {:.3f}s'.format(self.debug_timer.toc(average=False)))
+
+                if cfg.TRAIN.USE_FLIPPED:
+                    logger.info('Appending horizontally-flipped training examples...')
+                    extend_with_flipped_entries(roidb)
+                logger.info('Loaded dataset: {:s}'.format(self.name))
+
             _add_class_assignments(roidb)
+
+            with open(cache_filepath, 'wb') as fp:
+                pickle.dump(roidb, fp, pickle.HIGHEST_PROTOCOL)
+            logger.info('Cache ground truth roidb to %s', cache_filepath)
+
             return roidb
 
     def _prep_roidb_entry(self, entry):
@@ -237,6 +249,30 @@ class JsonDataset(object):
         # 'box_to_gt_ind_map': Shape is (#rois). Maps from each roi to the index
         # in the list of rois that satisfy np.where(entry['gt_classes'] > 0)
         entry['box_to_gt_ind_map'] = np.empty((0), dtype=np.int32)
+        return entry
+
+    def _prep_roidb_entry_ApolloScape(self, entry_id):
+        """Adds empty metadata fields to an roidb entry."""
+        # Reference back to the parent dataset
+        entry = {}
+        entry['entry_id'] = entry_id
+        # Make file_name an abs path
+        im_path = os.path.join(self.ApolloScape.data_dir, entry_id)
+        assert os.path.exists(im_path), 'Image \'{}\' not found'.format(im_path)
+
+        entry['image'] = im_path
+        entry['flipped'] = False
+        entry['has_visible_keypoints'] = False
+        # Empty placeholders
+        entry['boxes'] = np.empty((0, 4), dtype=np.float32)
+        entry['segms'] = []
+        entry['gt_classes'] = np.empty(0, dtype=np.int32)
+        entry['seg_areas'] = np.empty(0, dtype=np.float32)
+        entry['gt_overlaps'] = scipy.sparse.csr_matrix(np.empty((0, self.num_classes), dtype=np.float32))
+        entry['is_crowd'] = np.empty(0, dtype=np.bool)
+        # 'box_to_gt_ind_map': Shape is (#rois). Maps from each roi to the index
+        # in the list of rois that satisfy np.where(entry['gt_classes'] > 0)
+        entry['box_to_gt_ind_map'] = np.empty(0, dtype=np.int32)
         return entry
 
     def _add_gt_annotations(self, entry):
@@ -372,7 +408,68 @@ class JsonDataset(object):
             boxes[ix, :] = obj['clean_bbox']
             gt_classes[ix] = cls
             seg_areas[ix] = obj['area']
-            is_crowd[ix] = False   #TODO: What's this flag for?
+            is_crowd[ix] = False  # TODO: What's this flag for?
+            box_to_gt_ind_map[ix] = ix
+            gt_overlaps[ix, cls] = 1.0
+
+        entry['boxes'] = np.append(entry['boxes'], boxes, axis=0)
+        entry['segms'].extend(valid_segms)
+        entry['gt_classes'] = np.append(entry['gt_classes'], gt_classes)
+        entry['seg_areas'] = np.append(entry['seg_areas'], seg_areas)
+        entry['gt_overlaps'] = np.append(entry['gt_overlaps'].toarray(), gt_overlaps, axis=0)
+        entry['gt_overlaps'] = scipy.sparse.csr_matrix(entry['gt_overlaps'])
+        entry['is_crowd'] = np.append(entry['is_crowd'], is_crowd)
+        entry['box_to_gt_ind_map'] = np.append(entry['box_to_gt_ind_map'], box_to_gt_ind_map)
+
+    def _add_gt_annotations_ApolloScape(self, entry):
+        """Add ground truth annotation metadata to an roidb entry."""
+        label_dir = os.path.join(entry['entry_id'].split('/')[0], 'Label', '/'.join(entry['entry_id'].split('/')[2:]))
+        label_image_name = label_dir[:-4] + '_instanceIds.png'
+        # color_img = Image.open(os.path.join(self.WAD_CVPR2018.train_image_dir, entry['entry_id']))
+        label_image = os.path.join(self.ApolloScape.data_dir, label_image_name)
+        assert os.path.exists(label_image), 'Label \'{}\' not found'.format(label_image)
+        l_img = Image.open(label_image)
+        l_img = np.asarray(l_img)
+
+        entry['height'] = self.ApolloScape.image_shape[0]
+        entry['width'] = self.ApolloScape.image_shape[1]
+        # Sanitize bboxes -- some are invalid
+        valid_objs = []
+        valid_segms = []
+
+        for label in np.unique(l_img):
+            class_id = label // 1000
+            if class_id in self.ApolloScape.eval_class:
+                area = np.sum(l_img == label)
+                if area < cfg.TRAIN.GT_MIN_AREA:
+                    continue
+                # Convert form (x1, y1, w, h) to (x1, y1, x2, y2)
+                mask = l_img == label
+                mask_f = np.array(mask, order='F', dtype=np.uint8)
+                rle = COCOmask.encode(mask_f)
+                valid_segms.append(rle)
+
+                xd, yd = np.where(mask)
+                x1, y1, x2, y2 = yd.min(), xd.min(), yd.max(), xd.max()
+                x1, y1, x2, y2 = box_utils.clip_xyxy_to_image(x1, y1, x2, y2, entry['height'], entry['width'])
+                # Require non-zero seg area and more than 1x1 box size\
+                obj = {'area': area, 'clean_bbox': [x1, y1, x2, y2], 'category_id': class_id}
+                valid_objs.append(obj)
+
+        num_valid_objs = len(valid_objs)
+        boxes = np.zeros((num_valid_objs, 4), dtype=np.float32)
+        gt_classes = np.zeros((num_valid_objs), dtype=np.int32)
+        gt_overlaps = np.zeros((num_valid_objs, self.num_classes), dtype=np.float32)
+        seg_areas = np.zeros((num_valid_objs), dtype=np.float32)
+        is_crowd = np.zeros((num_valid_objs), dtype=np.bool)
+        box_to_gt_ind_map = np.zeros((num_valid_objs), dtype=np.int32)
+
+        for ix, obj in enumerate(valid_objs):
+            cls = self.ApolloScape.json_category_id_to_contiguous_id[obj['category_id']]
+            boxes[ix, :] = obj['clean_bbox']
+            gt_classes[ix] = cls
+            seg_areas[ix] = obj['area']
+            is_crowd[ix] = False  # TODO: What's this flag for?
             box_to_gt_ind_map[ix] = ix
             gt_overlaps[ix, cls] = 1.0
 
@@ -423,8 +520,6 @@ class JsonDataset(object):
         _merge_proposal_boxes_into_roidb(roidb, box_list)
         if crowd_thresh > 0:
             _filter_crowd_proposals(roidb, crowd_thresh)
-
-
 
 
 def add_proposals(roidb, rois, scales, crowd_thresh):

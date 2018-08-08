@@ -1,6 +1,6 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0, 3'
 
 import sys
 import pickle
@@ -46,7 +46,7 @@ def parse_args():
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')
-    parser.add_argument('--dataset_dir', default='/media/4tb/CVPR2018_WAD')
+    parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape')
     # Optimization
     # These options has the highest prioity and can overwrite the values in config file or values set by set_cfgs. `None` means do not overwrite.
     parser.add_argument('--bs', dest='batch_size', help='Explicitly specify to overwrite the value comed from cfg_file.', type=int)
@@ -112,7 +112,7 @@ def main():
     cfg.MODEL.NUM_CLASSES = 8
     cfg.TRAIN.MIN_AREA = 49   # 7*7
     cfg.SOLVER.BASE_LR = 0.005
-    cfg.TRAIN.IMS_PER_BATCH = 2
+    cfg.TRAIN.IMS_PER_BATCH = 1
 
     cfg.NUM_GPUS = torch.cuda.device_count()
     effective_batch_size = cfg.TRAIN.IMS_PER_BATCH * cfg.NUM_GPUS * args.iter_size

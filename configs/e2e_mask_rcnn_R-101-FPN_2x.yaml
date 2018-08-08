@@ -4,7 +4,7 @@ MODEL:
   FASTER_RCNN: True
   MASK_ON: True
 RESNETS:
-  IMAGENET_PRETRAINED_WEIGHTS: '/home/stevenwudi/PycharmProjects/mask-rcnn.pytorch/data/pretrained_model/resnet101_caffe.pth'
+  IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'
 NUM_GPUS: 4
 SOLVER:
   WEIGHT_DECAY: 0.0001
