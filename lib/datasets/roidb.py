@@ -35,7 +35,7 @@ from .json_dataset import _add_class_assignments
 logger = logging.getLogger(__name__)
 
 
-def combined_roidb_for_training(dataset_names, dataset_dir=None):
+def combined_roidb_for_training(dataset_names, dataset_dir=None, list_flag='train'):
     """Load and concatenate roidbs for one or more datasets, along with optional
     object proposals. The roidb entries are then prepared for use in training,
     which involves caching certain types of metadata for each roidb entry.
@@ -43,12 +43,12 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None):
 
     def get_roidb(dataset_name, dataset_dir):
         ds = JsonDataset(dataset_name, dataset_dir)
-        roidb = ds.get_roidb(gt=True)
+        roidb = ds.get_roidb(gt=True, list_flag=list_flag)
         return roidb, ds
 
     roidbs, ds = get_roidb(dataset_names, dataset_dir)
     # I have cleaned very thing, so next line does not execute, but very important tho
-    cache_filepath_filtered = os.path.join(ds.cache_path, ds.name + '_gt_roidb_filtered.pkl')
+    cache_filepath_filtered = os.path.join(ds.cache_path,  ds.name + '_' + list_flag + '_gt_roidb_filtered.pkl')
     if not os.path.exists(cache_filepath_filtered):
         roidbs = filter_for_training(roidbs, cache_filepath_filtered)
 
@@ -108,7 +108,7 @@ def filter_for_training(roidb, cache_filepath_filtered):
         filtered_entry['gt_overlaps'] = scipy.sparse.csr_matrix(gt_overlaps)
 
         # We only add the images with valid instances
-        if len(entry['seg_areas']) > 0:
+        if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:
             filtered_roidb.append(filtered_entry)
     _add_class_assignments(filtered_roidb)
 

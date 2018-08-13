@@ -58,13 +58,11 @@ def parse_args():
 
     # Epoch
     parser.add_argument('--start_step', help='Starting step count for training epoch. 0-indexed.', default=0, type=int)
-
     # Resume training: requires same iterations per epoch
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
     parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/stevenwudi/stevenwudi/PycharmProjects/CVPR_2018_WAD/Outputs/e2e_mask_rcnn_R-101-FPN_2x/Jun13-15-31-20_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
-
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 
@@ -92,7 +90,6 @@ def save_ckpt(output_dir, args, step, train_size, model, optimizer):
 
 def main():
     """Main function"""
-
     args = parse_args()
     print('Called with args:')
     print(args)
@@ -127,7 +124,6 @@ def main():
     assert (args.batch_size % cfg.NUM_GPUS) == 0, 'batch_size: %d, NUM_GPUS: %d' % (args.batch_size, cfg.NUM_GPUS)
 
     print('effective_batch_size = batch_size * iter_size = %d * %d' % (args.batch_size, args.iter_size))
-
     print('Adaptive config changes:')
     print('    effective_batch_size: %d --> %d' % (original_batch_size, effective_batch_size))
     print('    NUM_GPUS:             %d --> %d' % (original_num_gpus, cfg.NUM_GPUS))
@@ -138,8 +134,7 @@ def main():
     # on batch_size instead of effective_batch_size
     old_base_lr = cfg.SOLVER.BASE_LR
     cfg.SOLVER.BASE_LR *= args.batch_size / original_batch_size
-    print('Adjust BASE_LR linearly according to batch_size change:\n'
-          '    BASE_LR: {} --> {}'.format(old_base_lr, cfg.SOLVER.BASE_LR))
+    print('Adjust BASE_LR linearly according to batch_size change:\n BASE_LR: {} --> {}'.format(old_base_lr, cfg.SOLVER.BASE_LR))
 
     ### Adjust solver steps
     step_scale = original_batch_size / effective_batch_size

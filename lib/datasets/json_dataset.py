@@ -144,11 +144,11 @@ class JsonDataset(object):
         assert gt is True or crowd_filter_thresh == 0, \
             'Crowd filter threshold must be 0 if ground-truth annotations ' \
             'are not included.'
-        cache_filepath = os.path.join(self.cache_path, self.name + '_' + list_flag + '_' + '_gt_roidb.pkl')
+        cache_filepath = os.path.join(self.cache_path, self.name + '_' + list_flag + '_gt_roidb.pkl')
 
         if gt and os.path.exists(cache_filepath):
             # check whether we have our previously precomputed filtered ROI
-            cache_filepath_filtered = os.path.join(self.cache_path, self.name + '_' + list_flag + '_' + '_gt_roidb_filtered.pkl')
+            cache_filepath_filtered = os.path.join(self.cache_path, self.name + '_' + list_flag + '_gt_roidb_filtered.pkl')
             if os.path.exists(cache_filepath_filtered):
                 with open(cache_filepath_filtered, 'rb') as fp:
                     roidb = pickle.load(fp)
