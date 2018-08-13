@@ -20,11 +20,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-
 import logging
 import numpy as np
 from tqdm import tqdm
 import scipy
+import os
+import pickle
 
 import utils.boxes as box_utils
 from core.config import cfg
@@ -39,6 +40,7 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None):
     object proposals. The roidb entries are then prepared for use in training,
     which involves caching certain types of metadata for each roidb entry.
     """
+
     def get_roidb(dataset_name, dataset_dir):
         ds = JsonDataset(dataset_name, dataset_dir)
         roidb = ds.get_roidb(gt=True)
@@ -46,8 +48,9 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None):
 
     roidbs, ds = get_roidb(dataset_names, dataset_dir)
     # I have cleaned very thing, so next line does not execute, but very important tho
-    if False:
-        roidbs = filter_for_training(roidbs)
+    cache_filepath_filtered = os.path.join(ds.cache_path, ds.name + '_gt_roidb_filtered.pkl')
+    if not os.path.exists(cache_filepath_filtered):
+        roidbs = filter_for_training(roidbs, cache_filepath_filtered)
 
     if cfg.TRAIN.ASPECT_GROUPING or cfg.TRAIN.ASPECT_CROPPING:
         logger.info('Computing image aspect ratios and ordering the ratios...')
@@ -66,10 +69,9 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None):
     return roidbs, ratio_list, ratio_index
 
 
-def filter_for_training(roidb):
+def filter_for_training(roidb, cache_filepath_filtered):
     """Remove roidb entries that have no usable RoIs based on config settings.
     """
-
     total_obj_count = 0
     valid_obj_count = 0
     filtered_roidb = []
@@ -105,10 +107,18 @@ def filter_for_training(roidb):
         filtered_entry['box_to_gt_ind_map'] = box_to_gt_ind_map
         filtered_entry['gt_overlaps'] = scipy.sparse.csr_matrix(gt_overlaps)
 
-        filtered_roidb.append(filtered_entry)
+        # We only add the images with valid instances
+        if len(entry['seg_areas']) > 0:
+            filtered_roidb.append(filtered_entry)
     _add_class_assignments(filtered_roidb)
 
     logger.info('Filtered {} obj entries: {} -> {}'.format(total_obj_count - valid_obj_count, total_obj_count, valid_obj_count))
+    logger.info('Filtered {} img entries: {} -> {}'.format(len(roidb) - len(filtered_roidb), len(roidb), len(filtered_roidb)))
+
+    with open(cache_filepath_filtered, 'wb') as fp:
+        pickle.dump(filtered_roidb, fp, pickle.HIGHEST_PROTOCOL)
+    logger.info('Cache ground truth roidb to %s', cache_filepath_filtered)
+
     return filtered_roidb
 
 
@@ -153,6 +163,7 @@ def rank_for_training(roidb):
     ratio_list = np.array(ratio_list)
     ratio_index = np.argsort(ratio_list)
     return ratio_list[ratio_index], ratio_index
+
 
 def add_bbox_regression_targets(roidb):
     """Add information needed to train bounding-box regressors."""
@@ -202,16 +213,11 @@ def _compute_and_log_stats(roidb, ds):
     # Histogram of ground-truth objects
     gt_hist = np.zeros((len(classes)), dtype=np.int)
     for entry in roidb:
-        gt_inds = np.where(
-            (entry['gt_classes'] > 0) & (entry['is_crowd'] == 0))[0]
+        gt_inds = np.where((entry['gt_classes'] > 0) & (entry['is_crowd'] == 0))[0]
         gt_classes = entry['gt_classes'][gt_inds]
         gt_hist += np.histogram(gt_classes, bins=hist_bins)[0]
-    logger.debug('Ground-truth class histogram:')
+    logger.info('Ground-truth class histogram:')
     for i, v in enumerate(gt_hist):
-        logger.debug(
-            '{:d}{:s}: {:d}'.format(
-                i, classes[i].rjust(char_len), v))
-    logger.debug('-' * char_len)
-    logger.debug(
-        '{:s}: {:d}'.format(
-            'total'.rjust(char_len), np.sum(gt_hist)))
+        logger.info('{:d}{:s}: {:d}'.format(i, classes[i].rjust(char_len), v))
+    logger.info('-' * char_len)
+    logger.info('{:s}: {:d}'.format('total'.rjust(char_len), np.sum(gt_hist)))

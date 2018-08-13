@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 class JsonDataset(object):
     """A class representing a COCO json dataset."""
 
-    def __init__(self, name, dataset_dir):
+    def __init__(self, name, dataset_dir=None):
         assert name in DATASETS.keys(), \
             'Unknown dataset name: {}'.format(name)
         assert os.path.exists(DATASETS[name][IM_DIR]), \
@@ -80,12 +80,15 @@ class JsonDataset(object):
             self.classes = ['__background__'] + [c for c in self.ApolloScape.eval_cat]
             self.num_classes = len(self.ApolloScape.eval_cat) + 1
             self.keypoints = None
+            self.eval_class = self.ApolloScape.eval_class
 
         if self.dataset_name == 'wad':
             self.WAD_CVPR2018 = WAD_CVPR2018(dataset_dir)
             self.classes = ['__background__'] + [c for c in self.WAD_CVPR2018.eval_cat]
             self.num_classes = len(self.WAD_CVPR2018.eval_cat) + 1
             self.keypoints = None
+            self.eval_class = self.WAD_CVPR2018.eval_class
+
         elif self.dataset_name == 'coco_2017_train':
             self.COCO = COCO(DATASETS[name][ANN_FN])
             # Set up dataset classes
@@ -127,9 +130,12 @@ class JsonDataset(object):
     def get_roidb(
             self,
             gt=False,
-            crowd_filter_thresh=0
+            crowd_filter_thresh=0,
+            list_flag='train',
     ):
         """Return an roidb corresponding to the json dataset. Optionally:
+        :param list_flag: ['train', 'val', test']
+
            - include ground truth boxes in the roidb
            - add proposals specified in a proposals file
            - filter proposals based on a minimum side length
@@ -141,11 +147,19 @@ class JsonDataset(object):
         cache_filepath = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
 
         if gt and os.path.exists(cache_filepath):
-            # Include ground-truth object annotations
-            with open(cache_filepath, 'rb') as fp:
-                roidb = pickle.load(fp)
-            print('Load_gt_from_cache')
-            return roidb
+            # check whether we have our previously precomputed filtered ROI
+            cache_filepath_filtered = os.path.join(self.cache_path, self.name + '_gt_roidb_filtered.pkl')
+            if os.path.exists(cache_filepath_filtered):
+                with open(cache_filepath_filtered, 'rb') as fp:
+                    roidb = pickle.load(fp)
+                print('Load_gt_from_cache with filtered ops.')
+                return roidb
+            else:
+                # Include ground-truth object annotations
+                with open(cache_filepath, 'rb') as fp:
+                    roidb = pickle.load(fp)
+                print('Load_gt_from_cache')
+                return roidb
 
         else:
             # We recalculate the data
@@ -163,7 +177,8 @@ class JsonDataset(object):
                     roidb.append(self._prep_roidb_entry_wad(entry))
             elif self.dataset_name == 'ApolloScape':
                 # image_ids = os.listdir(self.WAD_CVPR2018.train_image_dir)[:10]
-                image_ids = self.ApolloScape.get_train_img_list()
+                image_ids = self.ApolloScape.get_img_list(list_flag=list_flag)
+                image_ids = image_ids[:3]
                 roidb = []
                 for entry in image_ids:
                     roidb.append(self._prep_roidb_entry_ApolloScape(entry))
@@ -179,10 +194,12 @@ class JsonDataset(object):
                         self._add_gt_annotations_ApolloScape(entry)
                 logger.debug('_add_gt_annotations took {:.3f}s'.format(self.debug_timer.toc(average=False)))
 
-                if cfg.TRAIN.USE_FLIPPED:
+                if list_flag is not 'train':
+                    cache_filepath = cache_filepath[:-4] + '_' + list_flag + cache_filepath[-4:]
+                elif cfg.TRAIN.USE_FLIPPED:
                     logger.info('Appending horizontally-flipped training examples...')
                     extend_with_flipped_entries(roidb)
-                logger.info('Loaded dataset: {:s}'.format(self.name))
+                logger.info('Loaded dataset: {:s}'.format(self.name + '_' + list_flag))
 
             _add_class_assignments(roidb)
 

@@ -118,7 +118,7 @@ class WAD_CVPR2018:
         anns = []
         count = 1
         tic = time.time()
-        if range is not None:
+        if range_idx is not None:
             start, end = range_idx
             for i in range(start, end):
                 entry = self.roidb[i]

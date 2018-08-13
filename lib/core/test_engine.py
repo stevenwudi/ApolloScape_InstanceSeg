@@ -103,7 +103,6 @@ def run_inference(
                     proposal_file,
                     output_dir,
                     multi_gpu=multi_gpu_testing,
-                    dataset_dir=dataset_dir
                 )
                 all_results.update(results)
 
@@ -196,7 +195,7 @@ def test_net_on_dataset(
         multi_gpu=False,
         gpu_id=0):
     """Run inference on a dataset."""
-    dataset = JsonDataset(dataset_name, args.dataset_dir)
+    dataset = JsonDataset(dataset_name)
     test_timer = Timer()
     test_timer.tic()
     if multi_gpu:
@@ -205,14 +204,10 @@ def test_net_on_dataset(
             args, dataset_name, proposal_file, num_images, output_dir
         )
     else:
-        all_boxes, all_segms, all_keyps = test_net(
-            args, dataset_name, proposal_file, output_dir, gpu_id=gpu_id
-        )
+        all_boxes, all_segms, all_keyps = test_net(args, dataset_name, proposal_file, output_dir, gpu_id=gpu_id)
     test_timer.toc()
     logger.info('Total inference time: {:.3f}s'.format(test_timer.average_time))
-    results = task_evaluation.evaluate_all(
-        dataset, all_boxes, all_segms, all_keyps, output_dir
-    )
+    results = task_evaluation.evaluate_all(dataset, all_boxes, all_segms, all_keyps, output_dir)
     return results
 
 
@@ -273,9 +268,8 @@ def test_net(
     """Run inference on all images in a dataset or over an index range of images
     in a dataset using a single GPU.
     """
-    assert not cfg.MODEL.RPN_ONLY, \
-        'Use rpn_generate to generate proposals from RPN-only models'
-    dataset = JsonDataset(dataset_name, args.dataset_dir)
+    assert not cfg.MODEL.RPN_ONLY, 'Use rpn_generate to generate proposals from RPN-only models'
+    dataset = JsonDataset(dataset_name)
     timers = defaultdict(Timer)
     if ind_range is not None:
         if cfg.TEST.SOFT_NMS.ENABLED:
@@ -285,7 +279,7 @@ def test_net(
     else:
         det_name = 'detections.pkl'
     det_file = os.path.join(output_dir, det_name)
-    roidb, dataset, start_ind, end_ind, total_num_images = get_roidb_and_dataset(dataset, proposal_file, ind_range)
+    roidb, dataset, start_ind, end_ind, total_num_images = get_roidb_and_dataset(dataset, proposal_file, ind_range, args)
     num_images = len(roidb)
     image_ids = []
     num_classes = cfg.MODEL.NUM_CLASSES
@@ -400,7 +394,7 @@ def initialize_model_from_cfg(args, gpu_id=0):
     return model
 
 
-def get_roidb_and_dataset(dataset, proposal_file, ind_range):
+def get_roidb_and_dataset(dataset, proposal_file, ind_range, args):
     """Get the roidb for the dataset specified in the global cfg. Optionally
     restrict it to a range of indices if ind_range is a pair of integers.
     """
@@ -411,8 +405,8 @@ def get_roidb_and_dataset(dataset, proposal_file, ind_range):
             proposal_limit=cfg.TEST.PROPOSAL_LIMIT
         )
     else:
-        roidb = dataset.get_roidb(gt=True)
-        dataset.WAD_CVPR2018.roidb = roidb
+        roidb = dataset.get_roidb(gt=True, list_flag=args.list_flag)
+        dataset.roidb = roidb
 
     if ind_range is not None:
         total_num_images = len(roidb)
