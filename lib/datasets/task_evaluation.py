@@ -85,9 +85,7 @@ def evaluate_boxes(dataset, all_boxes, output_dir, args=None):
         wad_eval = json_dataset_evaluator.evaluate_boxes_wad(dataset, all_boxes, output_dir, use_salt=not_comp, cleanup=not_comp, args=args)
         box_results = _coco_eval_to_box_results(wad_eval)
     else:
-        raise NotImplementedError(
-            'No evaluator for dataset: {}'.format(dataset.name)
-        )
+        raise NotImplementedError('No evaluator for dataset: {}'.format(dataset.name))
     return OrderedDict([(dataset.name, box_results)])
 
 
@@ -247,16 +245,12 @@ def _use_cityscapes_evaluator(dataset):
 
 def _use_wad_evaluator(dataset):
     """Check if the dataset uses the Cityscapes dataset evaluator."""
-    return dataset.name.find('wad') > -1
+    return dataset.name.find('wad') > -1 or dataset.name.find('ApolloScape') > -1
+
 
 def _use_voc_evaluator(dataset):
     """Check if the dataset uses the PASCAL VOC dataset evaluator."""
     return dataset.name[:4] == 'voc_'
-
-
-def _use_wad_evaluator(dataset):
-    """Check if the dataset uses the WAD dataset evaluator."""
-    return dataset.name[:3] == 'wad'
 
 # Indices in the stats array for COCO boxes and masks
 COCO_AP = 0

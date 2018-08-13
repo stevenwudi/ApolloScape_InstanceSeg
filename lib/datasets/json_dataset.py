@@ -144,11 +144,11 @@ class JsonDataset(object):
         assert gt is True or crowd_filter_thresh == 0, \
             'Crowd filter threshold must be 0 if ground-truth annotations ' \
             'are not included.'
-        cache_filepath = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
+        cache_filepath = os.path.join(self.cache_path, self.name + '_' + list_flag + '_' + '_gt_roidb.pkl')
 
         if gt and os.path.exists(cache_filepath):
             # check whether we have our previously precomputed filtered ROI
-            cache_filepath_filtered = os.path.join(self.cache_path, self.name + '_gt_roidb_filtered.pkl')
+            cache_filepath_filtered = os.path.join(self.cache_path, self.name + '_' + list_flag + '_' + '_gt_roidb_filtered.pkl')
             if os.path.exists(cache_filepath_filtered):
                 with open(cache_filepath_filtered, 'rb') as fp:
                     roidb = pickle.load(fp)
@@ -160,7 +160,6 @@ class JsonDataset(object):
                     roidb = pickle.load(fp)
                 print('Load_gt_from_cache')
                 return roidb
-
         else:
             # We recalculate the data
             if self.dataset_name == 'coco_2017_train':
@@ -178,7 +177,6 @@ class JsonDataset(object):
             elif self.dataset_name == 'ApolloScape':
                 # image_ids = os.listdir(self.WAD_CVPR2018.train_image_dir)[:10]
                 image_ids = self.ApolloScape.get_img_list(list_flag=list_flag)
-                image_ids = image_ids[:3]
                 roidb = []
                 for entry in image_ids:
                     roidb.append(self._prep_roidb_entry_ApolloScape(entry))

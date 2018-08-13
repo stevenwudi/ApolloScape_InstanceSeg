@@ -73,6 +73,10 @@ class ApolloScape(WAD_CVPR2018):
         }
         self.dataset = dict()
         self.id_map_to_cat = dict(zip(self.category_to_id_map.values(), self.category_to_id_map.keys()))
+        self.contiguous_category_id_to_json_id = {
+            v: k
+            for k, v in self.json_category_id_to_contiguous_id.items()
+        }
 
     def get_img_list(self, list_flag='train', with_valid=False, roads=[1, 2, 3]):
         """
@@ -143,7 +147,7 @@ class ApolloScape(WAD_CVPR2018):
                 return self._data_config['intrinsic'][name]
         raise ValueError('%s has no provided intrinsic' % image_name)
 
-    def loadGt(self, range_idx, type='boxes'):
+    def loadGt(self, roidb, range_idx, type='boxes'):
         """
         Load result file and return a result api object.
         :param   range     : range of image file
@@ -159,7 +163,7 @@ class ApolloScape(WAD_CVPR2018):
         if range_idx is not None:
             start, end = range_idx
             for i in range(start, end):
-                entry = self.roidb[i]
+                entry = roidb[i]
                 res.dataset['images'].append({'id': entry['image']})
                 if type == 'boxes':
                     for id in range(len(entry['boxes'])):

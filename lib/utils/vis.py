@@ -251,8 +251,7 @@ def vis_one_image(
 
 def vis_one_image_cvpr2018_wad(
         im, im_name, output_dir, boxes, segms=None, keypoints=None, thresh=0.9,
-        kp_thresh=2, dpi=200, box_alpha=0.0, dataset=None, show_class=False,
-        ext='jpg'):
+        dpi=200, box_alpha=0.0, dataset=None, show_class=False, ext='jpg'):
     """Visual debugging of detections."""
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -323,8 +322,7 @@ def vis_one_image_cvpr2018_wad(
                 img[:, :, c] = color_mask[c]
             e = masks[:, :, i]
 
-            _, contour, hier = cv2.findContours(
-                e.copy(), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+            _, contour, hier = cv2.findContours(e.copy(), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
 
             for c in contour:
                 polygon = Polygon(

@@ -82,8 +82,7 @@ def get_inference_dataset(index, is_parent=True):
 def run_inference(
         args, ind_range=None,
         multi_gpu_testing=False, gpu_id=0,
-        check_expected_results=False,
-        dataset_dir=None):
+        check_expected_results=False):
     parent_func, child_func = get_eval_functions()
     is_parent = ind_range is None
 
@@ -355,7 +354,7 @@ def test_net(
                     keypoints=cls_keyps_i,
                     thresh=0.5,
                     box_alpha=0.8,
-                    dataset=dataset.WAD_CVPR2018,
+                    dataset=dataset.ApolloScape,
                     show_class=True
                 )
         cfg_yaml = yaml.dump(cfg)

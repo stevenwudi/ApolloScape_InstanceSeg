@@ -77,7 +77,10 @@ def evaluate_masks_wad(
     res_file += '.json'
     _write_wad_segms_results_file(json_dataset, all_boxes, all_segms, res_file, args)
     # Only do evaluation on non-test sets (annotations are undisclosed on test)
-    coco_eval = _do_wad_segmentation_eval(args, json_dataset, res_file, output_dir)
+    if json_dataset.name == 'ApolloScape':
+        coco_eval = _apolloscape_do_segmentation_eval(args, json_dataset, res_file, output_dir)
+    else:
+        coco_eval = _do_wad_segmentation_eval(args, json_dataset, res_file, output_dir)
 
     if cleanup:
         os.remove(res_file)
@@ -90,7 +93,7 @@ def _write_wad_segms_results_file(json_dataset, all_boxes, all_segms, res_file, 
     #   "segmentation": [...],
     #   "score": 0.236}, ...]
     results = []
-    for cls_ind, cls in enumerate(json_dataset.WAD_CVPR2018.eval_class):
+    for cls_ind, cls in enumerate(json_dataset.eval_class):
         cat_id = cls
         results.extend(_wad_segms_results_one_category(all_boxes[cls_ind + 1], all_segms[cls_ind+1], cat_id, args))
     logger.info('Writing bbox results json to: {}'.format(os.path.abspath(res_file)))
@@ -164,7 +167,6 @@ def _do_segmentation_eval(json_dataset, res_file, output_dir):
 def _do_wad_segmentation_eval(args, json_dataset, res_file, output_dir):
     coco_dt = json_dataset.WAD_CVPR2018.loadRes(str(res_file))
     coco_gt = json_dataset.WAD_CVPR2018.loadGt(args.range, 'segms')
-
     coco_eval = WAD_eval(args, coco_gt, coco_dt, 'segm')
     coco_eval.evaluate()
     coco_eval.accumulate()
@@ -183,6 +185,32 @@ def _wad_do_detection_eval(args, json_dataset, res_file, output_dir):
     coco_eval.accumulate()
     _log_detection_eval_metrics(json_dataset, coco_eval)
     eval_file = os.path.join(output_dir, 'detection_results.pkl')
+    save_object(coco_eval, eval_file)
+    logger.info('Wrote json eval results to: {}'.format(eval_file))
+    return coco_eval
+
+
+def _apolloscape_do_detection_eval(args, json_dataset, res_file, output_dir):
+    coco_dt = json_dataset.ApolloScape.loadRes(str(res_file))
+    coco_gt = json_dataset.ApolloScape.loadGt(json_dataset.roidb,  args.range, 'boxes')
+    coco_eval = WAD_eval(args, coco_gt, coco_dt, 'bbox')
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    _log_detection_eval_metrics(json_dataset, coco_eval)
+    eval_file = os.path.join(output_dir, 'detection_results.pkl')
+    save_object(coco_eval, eval_file)
+    logger.info('Wrote json eval results to: {}'.format(eval_file))
+    return coco_eval
+
+
+def _apolloscape_do_segmentation_eval(args, json_dataset, res_file, output_dir):
+    coco_dt = json_dataset.ApolloScape.loadRes(str(res_file))
+    coco_gt = json_dataset.ApolloScape.loadGt(json_dataset.roidb, args.range, 'segms')
+    coco_eval = WAD_eval(args, coco_gt, coco_dt, 'segm')
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    _log_detection_eval_metrics(json_dataset, coco_eval)
+    eval_file = os.path.join(output_dir, 'segmentation_results.pkl')
     save_object(coco_eval, eval_file)
     logger.info('Wrote json eval results to: {}'.format(eval_file))
     return coco_eval
@@ -226,7 +254,8 @@ def evaluate_boxes_wad(json_dataset, all_boxes, output_dir, use_salt=True, clean
     # Only do evaluation on non-test sets (annotations are undisclosed on test)
     if json_dataset.name == "wad":
         coco_eval = _wad_do_detection_eval(args, json_dataset, res_file, output_dir)
-
+    elif json_dataset.name == 'ApolloScape':
+        coco_eval = _apolloscape_do_detection_eval(args, json_dataset, res_file, output_dir)
     elif json_dataset.name.find('test') == -1:
         coco_eval = _do_detection_eval(json_dataset, res_file, output_dir)
     else:
@@ -243,11 +272,10 @@ def _write_wad_bbox_results_file(json_dataset, all_boxes, res_file, args):
     #   "bbox": [258.15,41.29,348.26,243.78],
     #   "score": 0.236}, ...]
     results = []
-    for cls_ind, cls in enumerate(json_dataset.WAD_CVPR2018.eval_class):
+    for cls_ind, cls in enumerate(json_dataset.eval_class):
         cat_id = cls
         results.extend(_wad_bbox_results_one_category(all_boxes[cls_ind + 1], cat_id, args))
-    logger.info(
-        'Writing bbox results json to: {}'.format(os.path.abspath(res_file)))
+    logger.info('Writing bbox results json to: {}'.format(os.path.abspath(res_file)))
     with open(res_file, 'w') as fid:
         json.dump(results, fid)
 
