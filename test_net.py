@@ -82,3 +82,21 @@ if __name__ == '__main__':
         multi_gpu_testing=args.multi_gpu_testing,
         check_expected_results=True)
 
+"""
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=all                  | maxDets=100 ] = 0.315
+ Average Precision  (AP) @[ IoU=0.50      | area=all                  | maxDets=100 ] = 0.502
+ Average Precision  (AP) @[ IoU=0.75      | area=all                  | maxDets=100 ] = 0.330
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=extra-small (0-14)   | maxDets=100 ] = 0.043 | (numGT, numDt) = 28858 163896
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium(28-56)        | maxDets=100 ] = 0.390 | (numGT, numDt) = 38493 134063
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=large(56-112)        | maxDets=100 ] = 0.478 | (numGT, numDt) = 21262 51016
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=extra-large(112-512) | maxDets=100 ] = 0.533 | (numGT, numDt) = 14916 24344
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=uber-large(512 !!!!) | maxDets=100 ] = 0.820 | (numGT, numDt) =  1254  3050
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=all                  | maxDets=  1 ] = 0.233
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=all                  | maxDets= 10 ] = 0.385
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=all                  | maxDets=100 ] = 0.425
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=extra-small (0-14)   | maxDets=100 ] = 0.139 | (numGT, numDt) = 28858 163896
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium(28-56)        | maxDets=100 ] = 0.511 | (numGT, numDt) = 38493 134063
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=large(56-112)        | maxDets=100 ] = 0.602 | (numGT, numDt) = 21262 51016
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=extra-large(112-512) | maxDets=100 ] = 0.677 | (numGT, numDt) = 14916 24344
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=uber-large(512 !!!!) | maxDets=100 ] = 0.869 | (numGT, numDt) =  1254  3050
+"""
