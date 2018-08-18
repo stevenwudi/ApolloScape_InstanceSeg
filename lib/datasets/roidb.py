@@ -50,7 +50,10 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None, list_flag='trai
     # I have cleaned very thing, so next line does not execute, but very important tho
     cache_filepath_filtered = os.path.join(ds.cache_path,  ds.name + '_' + list_flag + '_gt_roidb_filtered.pkl')
     if not os.path.exists(cache_filepath_filtered):
-        roidbs = filter_for_training(roidbs, cache_filepath_filtered)
+        if ds.name == 'Car3D':
+            roidbs = filter_for_training_Car3D(roidbs, cache_filepath_filtered, ds.num_classes)
+        else:
+            roidbs = filter_for_training(roidbs, cache_filepath_filtered)
 
     if cfg.TRAIN.ASPECT_GROUPING or cfg.TRAIN.ASPECT_CROPPING:
         logger.info('Computing image aspect ratios and ordering the ratios...')
@@ -64,7 +67,10 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None, list_flag='trai
         add_bbox_regression_targets(roidbs)
         logger.info('done')
 
-    _compute_and_log_stats(roidbs, ds)
+    if dataset_names == 'Car3D':
+        _compute_and_log_stats_Car3d(roidbs, ds)
+    else:
+        _compute_and_log_stats(roidbs, ds)
 
     return roidbs, ratio_list, ratio_index
 
@@ -111,6 +117,61 @@ def filter_for_training(roidb, cache_filepath_filtered):
         if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:
             filtered_roidb.append(filtered_entry)
     _add_class_assignments(filtered_roidb)
+
+    logger.info('Filtered {} obj entries: {} -> {}'.format(total_obj_count - valid_obj_count, total_obj_count, valid_obj_count))
+    logger.info('Filtered {} img entries: {} -> {}'.format(len(roidb) - len(filtered_roidb), len(roidb), len(filtered_roidb)))
+
+    with open(cache_filepath_filtered, 'wb') as fp:
+        pickle.dump(filtered_roidb, fp, pickle.HIGHEST_PROTOCOL)
+    logger.info('Cache ground truth roidb to %s', cache_filepath_filtered)
+
+    return filtered_roidb
+
+
+def filter_for_training_Car3D(roidb, cache_filepath_filtered, num_classes):
+    """Remove roidb entries that have no usable RoIs based on config settings.
+    """
+    total_obj_count = 0
+    valid_obj_count = 0
+    filtered_roidb = []
+    print('Remove roidb entry with small area')
+    for entry in tqdm(roidb):
+        filtered_entry = {}
+        # we also get rid of the tiny objects
+        valid_idx = []
+        total_obj_count += len(entry['seg_areas'])
+        for i, area in enumerate(entry['seg_areas']):
+            if area >= cfg.TRAIN.MIN_AREA:
+                valid_idx.append(i)
+        valid_obj_count += len(valid_idx)
+        obj_keys = ['boxes', 'car_cat_classes', 'seg_areas', 'is_crowd', 'bbox_targets', 'poses']
+        total_keys = entry.keys()
+        for key in total_keys:
+            if key in obj_keys:
+                if type(entry[key]) == list:
+                    filtered_entry[key] = [entry[key][x] for x in valid_idx]
+                else:
+                    filtered_entry[key] = entry[key][valid_idx]
+            elif key != 'gt_overlaps':
+                filtered_entry[key] = entry[key]
+
+        box_to_gt_ind_map = np.zeros((len(valid_idx)), dtype=np.int32)
+        gt_overlaps = np.zeros((len(valid_idx), num_classes), dtype=np.float32)
+
+        for ix in range(len(valid_idx)):
+            cls = filtered_entry['car_cat_classes'][ix]
+            box_to_gt_ind_map[ix] = ix
+            gt_overlaps[ix, cls] = 1.0
+
+        filtered_entry['box_to_gt_ind_map'] = box_to_gt_ind_map
+        filtered_entry['gt_overlaps'] = scipy.sparse.csr_matrix(gt_overlaps)
+        filtered_entry['gt_classes'] = np.ones(filtered_entry['car_cat_classes'].shape) * 33
+
+        # We only add the images with valid instances
+        if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:
+            filtered_roidb.append(filtered_entry)
+
+    _add_class_assignments(filtered_roidb, allow_zero=True)
 
     logger.info('Filtered {} obj entries: {} -> {}'.format(total_obj_count - valid_obj_count, total_obj_count, valid_obj_count))
     logger.info('Filtered {} img entries: {} -> {}'.format(len(roidb) - len(filtered_roidb), len(roidb), len(filtered_roidb)))
@@ -198,10 +259,8 @@ def _compute_targets(entry):
     gt_rois = rois[gt_inds[gt_assignment], :]
     ex_rois = rois[ex_inds, :]
     # Use class "1" for all boxes if using class_agnostic_bbox_reg
-    targets[ex_inds, 0] = (
-        1 if cfg.MODEL.CLS_AGNOSTIC_BBOX_REG else labels[ex_inds])
-    targets[ex_inds, 1:] = box_utils.bbox_transform_inv(
-        ex_rois, gt_rois, cfg.MODEL.BBOX_REG_WEIGHTS)
+    targets[ex_inds, 0] = (1 if cfg.MODEL.CLS_AGNOSTIC_BBOX_REG else labels[ex_inds])
+    targets[ex_inds, 1:] = box_utils.bbox_transform_inv(ex_rois, gt_rois, cfg.MODEL.BBOX_REG_WEIGHTS)
     return targets
 
 
@@ -215,6 +274,24 @@ def _compute_and_log_stats(roidb, ds):
     for entry in roidb:
         gt_inds = np.where((entry['gt_classes'] > 0) & (entry['is_crowd'] == 0))[0]
         gt_classes = entry['gt_classes'][gt_inds]
+        gt_hist += np.histogram(gt_classes, bins=hist_bins)[0]
+    logger.info('Ground-truth class histogram:')
+    for i, v in enumerate(gt_hist):
+        logger.info('{:d}{:s}: {:d}'.format(i, classes[i].rjust(char_len), v))
+    logger.info('-' * char_len)
+    logger.info('{:s}: {:d}'.format('total'.rjust(char_len), np.sum(gt_hist)))
+
+
+def _compute_and_log_stats_Car3d(roidb, ds):
+    """ We compute the statistics for each car models"""
+    classes = ds.Car3D.unique_car_names
+    char_len = np.max([len(c) for c in classes])
+    hist_bins = np.arange(len(classes)+1)
+
+    # Histogram of ground-truth objects
+    gt_hist = np.zeros((len(classes)), dtype=np.int)
+    for entry in roidb:
+        gt_classes = entry['car_cat_classes']
         gt_hist += np.histogram(gt_classes, bins=hist_bins)[0]
     logger.info('Ground-truth class histogram:')
     for i, v in enumerate(gt_hist):

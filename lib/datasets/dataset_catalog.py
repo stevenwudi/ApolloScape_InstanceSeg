@@ -42,6 +42,11 @@ DATASETS = {
     },
 
     'ApolloScape': {
+        IM_DIR: '/media/SSD_1TB/ApolloScape/ECCV2018_apollo',
+        ANN_FN: '/media/SSD_1TB/ApolloScape/ECCV2018_apollo'
+    },
+
+    'Car3D': {
         IM_DIR: '/media/samsumg_1tb/ApolloScape',
         ANN_FN: '/media/samsumg_1tb/ApolloScape'
     },

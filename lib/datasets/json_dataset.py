@@ -31,8 +31,9 @@ import os
 
 import numpy as np
 import scipy.sparse
-from six.moves import cPickle as pickle
+import pickle
 from tqdm import tqdm
+
 
 # Must happen before importing COCO API (which imports matplotlib)
 import utils.env as envu
@@ -52,7 +53,11 @@ from .dataset_catalog import IM_DIR
 from .dataset_catalog import IM_PREFIX
 from .dataloader_wad_cvpr2018 import WAD_CVPR2018
 from .dataloader_apolloscape import ApolloScape
+from .dataloader_3d_car import Car3D
+
 from PIL import Image
+import json
+import cv2
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +87,15 @@ class JsonDataset(object):
             self.keypoints = None
             self.eval_class = self.ApolloScape.eval_class
 
-        if self.dataset_name == 'wad':
+        elif self.dataset_name == 'Car3D':
+            self.Car3D = Car3D(dataset_dir)
+            self.car_models = self.Car3D.load_car_models()
+            self.classes = ['__background__'] + [c for c in self.Car3D.eval_cat]
+            self.num_classes = len(self.Car3D.unique_car_models)
+            self.keypoints = None
+            self.eval_class = self.Car3D.eval_class
+
+        elif self.dataset_name == 'wad':
             self.WAD_CVPR2018 = WAD_CVPR2018(dataset_dir)
             self.classes = ['__background__'] + [c for c in self.WAD_CVPR2018.eval_cat]
             self.num_classes = len(self.WAD_CVPR2018.eval_cat) + 1
@@ -181,6 +194,12 @@ class JsonDataset(object):
                 for entry in image_ids:
                     roidb.append(self._prep_roidb_entry_ApolloScape(entry))
 
+            elif self.dataset_name == 'Car3D':
+                # image_ids = os.listdir(self.WAD_CVPR2018.train_image_dir)[:10]
+                image_ids = self.Car3D.get_img_list(list_flag=list_flag, with_valid=False)
+                roidb = []
+                for entry in image_ids:
+                    roidb.append(self._prep_roidb_entry_Car3D(entry))
             if gt:
                 self.debug_timer.tic()
                 for entry in tqdm(roidb):
@@ -190,6 +209,9 @@ class JsonDataset(object):
                         self._add_gt_annotations_wad(entry)
                     elif self.dataset_name == 'ApolloScape':
                         self._add_gt_annotations_ApolloScape(entry)
+                    elif self.dataset_name == 'Car3D':
+                        self._add_gt_annotations_Car3d(entry)
+
                 logger.debug('_add_gt_annotations took {:.3f}s'.format(self.debug_timer.toc(average=False)))
 
                 if list_flag is not 'train':
@@ -199,7 +221,9 @@ class JsonDataset(object):
                     extend_with_flipped_entries(roidb)
                 logger.info('Loaded dataset: {:s}'.format(self.name + '_' + list_flag))
 
-            _add_class_assignments(roidb)
+            if not self.dataset_name == 'Car3D':
+                # for Car3D, we don't have background class
+                _add_class_assignments(roidb)
 
             with open(cache_filepath, 'wb') as fp:
                 pickle.dump(roidb, fp, pickle.HIGHEST_PROTOCOL)
@@ -288,6 +312,36 @@ class JsonDataset(object):
         # 'box_to_gt_ind_map': Shape is (#rois). Maps from each roi to the index
         # in the list of rois that satisfy np.where(entry['gt_classes'] > 0)
         entry['box_to_gt_ind_map'] = np.empty(0, dtype=np.int32)
+        return entry
+
+    def _prep_roidb_entry_Car3D(self, entry_id):
+        """Adds empty metadata fields to an roidb entry."""
+        # Reference back to the parent dataset
+        entry = {}
+        entry['entry_id'] = entry_id
+        # Make file_name an abs path
+        im_path = os.path.join(self.Car3D.data_dir, 'images', entry_id+'.jpg')
+        assert os.path.exists(im_path), 'Image \'{}\' not found'.format(im_path)
+
+        entry['image'] = im_path
+        entry['flipped'] = False
+        entry['has_visible_keypoints'] = False
+        entry['has_poses'] = False
+        # Empty placeholders
+        entry['boxes'] = np.empty((0, 4), dtype=np.float32)
+        entry['segms'] = []
+        entry['gt_classes'] = np.empty(0, dtype=np.int32)
+        entry['seg_areas'] = np.empty(0, dtype=np.float32)
+        entry['gt_overlaps'] = scipy.sparse.csr_matrix(np.empty((0, self.num_classes), dtype=np.float32))
+        entry['is_crowd'] = np.empty(0, dtype=np.bool)
+        # 'box_to_gt_ind_map': Shape is (#rois). Maps from each roi to the index
+        # in the list of rois that satisfy np.where(entry['gt_classes'] > 0)
+        entry['box_to_gt_ind_map'] = np.empty(0, dtype=np.int32)
+
+        # newly added for 3d car
+        entry['visible_rate'] = np.empty(0, dtype=np.float32)
+        entry['poses'] = np.empty((0, 6), dtype=np.float32)
+        entry['car_cat_classes'] = np.empty(0, dtype=np.int32)
         return entry
 
     def _add_gt_annotations(self, entry):
@@ -497,6 +551,71 @@ class JsonDataset(object):
         entry['is_crowd'] = np.append(entry['is_crowd'], is_crowd)
         entry['box_to_gt_ind_map'] = np.append(entry['box_to_gt_ind_map'], box_to_gt_ind_map)
 
+    def _add_gt_annotations_Car3d(self, entry):
+        """Add ground truth annotation metadata to an roidb entry."""
+        entry_id = entry['entry_id']
+        # Make file_name an abs path
+        car_pose_file = os.path.join(self.Car3D.data_dir, 'car_poses', entry_id+'.json')
+        assert os.path.exists(car_pose_file), 'Label \'{}\' not found'.format(car_pose_file)
+        with open(car_pose_file) as f:
+            car_poses = json.load(f)
+        entry['height'] = self.Car3D.image_shape[0]
+        entry['width'] = self.Car3D.image_shape[1]
+
+        intrinsic_mat = self.Car3D.get_intrinsic_mat(entry_id)
+        # Sanitize bboxes -- some are invalid
+        valid_objs = []
+        for i, car_pose in enumerate(car_poses):
+            car_name = self.Car3D.car_id2name[car_pose['car_id']].name
+            car = self.car_models[car_name]
+            pose = np.array(car_pose['pose'])
+            # project 3D points to 2d image plane
+            imgpts, jac = cv2.projectPoints(np.float32(car['vertices']), pose[:3], pose[3:], intrinsic_mat, distCoeffs=np.asarray([]))
+            imgpts = np.int32(imgpts).reshape(-1, 2)
+
+            x1, y1, x2, y2 = imgpts[:, 0].min(), imgpts[:, 1].min(), imgpts[:, 0].max(), imgpts[:, 1].max()
+            x1, y1, x2, y2 = box_utils.clip_xyxy_to_image(x1, y1, x2, y2, entry['height'], entry['width'])
+            # Require non-zero seg area and more than 1x1 box size\
+            obj = {'area': car_pose['area'], 'clean_bbox': [x1, y1, x2, y2], 'category_id': 33,
+                   'car_id': car_pose['car_id'], 'visible_rate': car_pose['visible_rate'],
+                   'pose': car_pose['pose']}
+
+            valid_objs.append(obj)
+
+        num_valid_objs = len(valid_objs)
+        boxes = np.zeros((num_valid_objs, 4), dtype=np.float32)
+        gt_overlaps = np.zeros((num_valid_objs, self.num_classes), dtype=np.float32)
+        seg_areas = np.zeros((num_valid_objs), dtype=np.float32)
+        is_crowd = np.zeros((num_valid_objs), dtype=np.bool)
+        box_to_gt_ind_map = np.zeros((num_valid_objs), dtype=np.int32)
+
+        # newly added for 3d car
+        visible_rate = np.zeros((num_valid_objs), dtype=np.float32)
+        poses = np.zeros((num_valid_objs, 6), dtype=np.float32)
+        car_cat_classes = np.zeros((num_valid_objs), dtype=np.int32)
+
+        for ix, obj in enumerate(valid_objs):
+            cls = np.where(self.Car3D.unique_car_models == obj['car_id'])[0][0]
+            boxes[ix, :] = obj['clean_bbox']
+            car_cat_classes[ix] = cls
+            seg_areas[ix] = obj['area']
+            is_crowd[ix] = False  # TODO: What's this flag for?
+            box_to_gt_ind_map[ix] = ix
+            gt_overlaps[ix, cls] = 1.0
+            visible_rate[ix] = obj['visible_rate']
+            poses[ix] = obj['pose']
+
+        entry['boxes'] = np.append(entry['boxes'], boxes, axis=0)
+        entry['seg_areas'] = np.append(entry['seg_areas'], seg_areas)
+        entry['gt_overlaps'] = np.append(entry['gt_overlaps'].toarray(), gt_overlaps, axis=0)
+        entry['gt_overlaps'] = scipy.sparse.csr_matrix(entry['gt_overlaps'])
+        entry['is_crowd'] = np.append(entry['is_crowd'], is_crowd)
+        entry['box_to_gt_ind_map'] = np.append(entry['box_to_gt_ind_map'], box_to_gt_ind_map)
+        # newly added for 3d car
+        entry['visible_rate'] = np.append(entry['visible_rate'], visible_rate)
+        entry['poses'] = np.append(entry['poses'], poses)
+        entry['car_cat_classes'] = np.append(entry['car_cat_classes'], car_cat_classes)
+
     def _add_gt_from_cache(self, roidb, cache_filepath):
         """Add ground truth annotation metadata from cached file."""
         logger.info('Loading cached gt_roidb from %s', cache_filepath)
@@ -637,8 +756,9 @@ def _filter_crowd_proposals(roidb, crowd_thresh):
         entry['gt_overlaps'] = scipy.sparse.csr_matrix(gt_overlaps)
 
 
-def _add_class_assignments(roidb):
+def _add_class_assignments(roidb, allow_zero=False):
     """Compute object category assignment for each box associated with each roidb entry.
+    allow_zero: whether the 0 is the backgroud class, default False-->BG is zeros
     """
     for entry in roidb:
         gt_overlaps = entry['gt_overlaps'].toarray()
@@ -653,8 +773,9 @@ def _add_class_assignments(roidb):
         zero_inds = np.where(max_overlaps == 0)[0]
         assert all(max_classes[zero_inds] == 0)
         # if max overlap > 0, the class must be a fg class (not class 0)
-        nonzero_inds = np.where(max_overlaps > 0)[0]
-        assert all(max_classes[nonzero_inds] != 0)
+        if not allow_zero:
+            nonzero_inds = np.where(max_overlaps > 0)[0]
+            assert all(max_classes[nonzero_inds] != 0)
 
 
 def _sort_proposals(proposals, id_field):
