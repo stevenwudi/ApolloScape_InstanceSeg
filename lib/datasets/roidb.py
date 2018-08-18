@@ -165,7 +165,9 @@ def filter_for_training_Car3D(roidb, cache_filepath_filtered, num_classes):
 
         filtered_entry['box_to_gt_ind_map'] = box_to_gt_ind_map
         filtered_entry['gt_overlaps'] = scipy.sparse.csr_matrix(gt_overlaps)
-        filtered_entry['gt_classes'] = np.ones(filtered_entry['car_cat_classes'].shape) * 33
+
+        # this is a legecy network from WAD MaskRCNN
+        filtered_entry['gt_classes'] = np.ones(filtered_entry['car_cat_classes'].shape) * 4
 
         # We only add the images with valid instances
         if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:

@@ -66,13 +66,6 @@ class JsonDataset(object):
     """A class representing a COCO json dataset."""
 
     def __init__(self, name, dataset_dir=None):
-        assert name in DATASETS.keys(), \
-            'Unknown dataset name: {}'.format(name)
-        assert os.path.exists(DATASETS[name][IM_DIR]), \
-            'Image directory \'{}\' not found'.format(DATASETS[name][IM_DIR])
-        assert os.path.exists(DATASETS[name][ANN_FN]), \
-            'Annotation file \'{}\' not found'.format(DATASETS[name][ANN_FN])
-        logger.debug('Creating: {}'.format(name))
         self.name = name
         self.image_directory = DATASETS[name][IM_DIR]
         self.image_prefix = (
@@ -332,7 +325,9 @@ class JsonDataset(object):
         entry['segms'] = []
         entry['gt_classes'] = np.empty(0, dtype=np.int32)
         entry['seg_areas'] = np.empty(0, dtype=np.float32)
-        entry['gt_overlaps'] = scipy.sparse.csr_matrix(np.empty((0, self.num_classes), dtype=np.float32))
+
+        # this is a legacy network from WAD Mask-RCNN
+        entry['gt_overlaps'] = scipy.sparse.csr_matrix(np.empty((0, 8), dtype=np.float32))
         entry['is_crowd'] = np.empty(0, dtype=np.bool)
         # 'box_to_gt_ind_map': Shape is (#rois). Maps from each roi to the index
         # in the list of rois that satisfy np.where(entry['gt_classes'] > 0)
@@ -584,7 +579,9 @@ class JsonDataset(object):
 
         num_valid_objs = len(valid_objs)
         boxes = np.zeros((num_valid_objs, 4), dtype=np.float32)
-        gt_overlaps = np.zeros((num_valid_objs, self.num_classes), dtype=np.float32)
+        # this is a legacy network from WAD Mask-RCNN
+        car_class = 4
+        gt_overlaps = np.zeros((num_valid_objs, 8), dtype=np.float32)
         seg_areas = np.zeros((num_valid_objs), dtype=np.float32)
         is_crowd = np.zeros((num_valid_objs), dtype=np.bool)
         box_to_gt_ind_map = np.zeros((num_valid_objs), dtype=np.int32)
@@ -601,7 +598,7 @@ class JsonDataset(object):
             seg_areas[ix] = obj['area']
             is_crowd[ix] = False  # TODO: What's this flag for?
             box_to_gt_ind_map[ix] = ix
-            gt_overlaps[ix, cls] = 1.0
+            gt_overlaps[ix, car_class] = 1.0
             visible_rate[ix] = obj['visible_rate']
             poses[ix] = obj['pose']
 

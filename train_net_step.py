@@ -1,6 +1,6 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 import sys
 import pickle

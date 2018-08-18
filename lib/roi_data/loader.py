@@ -69,10 +69,6 @@ class RoiDataLoader(data.Dataset):
 
         blobs['roidb'] = blob_utils.serialize(blobs['roidb'])  # CHECK: maybe we can serialize in collate_fn
         return blobs
-        # if len(valid_inds) > 3:
-        #     return blobs
-        # else:
-        #     return None
 
     def crop_data(self, blobs, ratio):
         data_height, data_width = map(int, blobs['im_info'][:2])
