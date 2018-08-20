@@ -51,6 +51,11 @@ def get_fast_rcnn_blob_names(is_training=True):
         # this binary vector sepcifies the subset of active targets
         blob_names += ['bbox_inside_weights']
         blob_names += ['bbox_outside_weights']
+
+    if is_training and cfg.MODEL.CAR_CLS_HEAD:
+        # car_cls_label_int32 blob: categorical labels for car classification
+        blob_names += ['car_cls_labels_int32']
+
     if is_training and cfg.MODEL.MASK_ON:
         # 'mask_rois': RoIs sampled for training the mask prediction branch.
         # Shape is (#masks, 5) in format (batch_idx, x1, y1, x2, y2).
@@ -152,8 +157,7 @@ def _sample_rois(roidb, im_scale, batch_idx):
     bg_rois_per_this_image = np.minimum(bg_rois_per_this_image, bg_inds.size)
     # Sample foreground regions without replacement
     if bg_inds.size > 0:
-        bg_inds = npr.choice(
-            bg_inds, size=bg_rois_per_this_image, replace=False)
+        bg_inds = npr.choice(bg_inds, size=bg_rois_per_this_image, replace=False)
 
     # The indices that we're selecting (both fg and bg)
     keep_inds = np.append(fg_inds, bg_inds)
@@ -186,10 +190,13 @@ def _sample_rois(roidb, im_scale, batch_idx):
         bbox_inside_weights=bbox_inside_weights,
         bbox_outside_weights=bbox_outside_weights)
 
+    # Optionally add CAR_CLS_HEAD blobs
+    if cfg.MODEL.CAR_CLS_HEAD:
+        roi_data.mask_rcnn.add_car_cls_rcnn_blobs(blob_dict, roidb, fg_inds, sampled_labels)
+
     # Optionally add Mask R-CNN blobs
-    if cfg.MODEL.MASK_ON:
-        roi_data.mask_rcnn.add_mask_rcnn_blobs(blob_dict, sampled_boxes, roidb,
-                                               im_scale, batch_idx)
+    if cfg.MODEL.MASK_TRAIN_ON:
+        roi_data.mask_rcnn.add_mask_rcnn_blobs(blob_dict, sampled_boxes, roidb, im_scale, batch_idx)
 
     # Optionally add Keypoint R-CNN blobs
     if cfg.MODEL.KEYPOINTS_ON:
@@ -267,7 +274,7 @@ def _add_multilevel_rois(blobs):
         )
 
     _distribute_rois_over_fpn_levels('rois')
-    if cfg.MODEL.MASK_ON:
+    if cfg.MODEL.MASK_TRAIN_ON:
         _distribute_rois_over_fpn_levels('mask_rois')
     if cfg.MODEL.KEYPOINTS_ON:
         _distribute_rois_over_fpn_levels('keypoint_rois')

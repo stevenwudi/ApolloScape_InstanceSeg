@@ -18,7 +18,7 @@ import modeling.keypoint_rcnn_heads as keypoint_rcnn_heads
 import utils.blob as blob_utils
 import utils.net as net_utils
 import utils.resnet_weights_helper as resnet_utils
-
+import numpy as np
 logger = logging.getLogger(__name__)
 
 
@@ -100,15 +100,17 @@ class Generalized_RCNN(nn.Module):
 
         # BBOX Branch
         if not cfg.MODEL.RPN_ONLY:
-            self.Box_Head = get_func(cfg.FAST_RCNN.ROI_BOX_HEAD)(
-                self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
-            self.Box_Outs = fast_rcnn_heads.fast_rcnn_outputs(
-                self.Box_Head.dim_out)
+            self.Box_Head = get_func(cfg.FAST_RCNN.ROI_BOX_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
+            self.Box_Outs = fast_rcnn_heads.fast_rcnn_outputs(self.Box_Head.dim_out)
+
+        # BBOX Branch for finer car model classification
+        if cfg.MODEL.CAR_CLS_HEAD:
+            self.car_cls_Head = get_func(cfg.CAR_CLS.ROI_BOX_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
+            self.car_cls_Outs = fast_rcnn_heads.fast_rcnn_outputs_car_cls(self.car_cls_Head.dim_out)
 
         # Mask Branch
         if cfg.MODEL.MASK_ON:
-            self.Mask_Head = get_func(cfg.MRCNN.ROI_MASK_HEAD)(
-                self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
+            self.Mask_Head = get_func(cfg.MRCNN.ROI_MASK_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
             if getattr(self.Mask_Head, 'SHARE_RES5', False):
                 self.Mask_Head.share_res5_module(self.Box_Head.res5)
             self.Mask_Outs = mask_rcnn_heads.mask_rcnn_outputs(self.Mask_Head.dim_out)
@@ -136,6 +138,10 @@ class Generalized_RCNN(nn.Module):
             for p in self.Conv_Body.parameters():
                 p.requires_grad = False
 
+        if cfg.TRAIN.FREEZE_FPN:
+            for p in self.Box_Head.parameters():
+                p.requires_grad = False
+
     def forward(self, data, im_info, roidb=None, **rpn_kwargs):
         if cfg.PYTORCH_VERSION_LESS_THAN_040:
             return self._forward(data, im_info, roidb, **rpn_kwargs)
@@ -147,8 +153,6 @@ class Generalized_RCNN(nn.Module):
         im_data = data
         if self.training:
             roidb = list(map(lambda x: blob_utils.deserialize(x)[0], roidb))
-
-        device_id = im_data.get_device()
 
         return_dict = {}  # A dict to collect return variables
 
@@ -203,7 +207,22 @@ class Generalized_RCNN(nn.Module):
             return_dict['losses']['loss_bbox'] = loss_bbox
             return_dict['metrics']['accuracy_cls'] = accuracy_cls
 
-            if cfg.MODEL.MASK_ON:
+            if cfg.MODEL.CAR_CLS_HEAD:
+                if getattr(self.car_cls_Head, 'SHARE_RES5', False):
+                    # TODO: add thos sjared_res5 module
+                    pass
+                else:
+                    car_cls_score = self.car_cls_Outs(box_feat)
+                    # car classification loss, we only fine tune the labelled cars
+
+                # we only use the car cls
+                car_idx = np.where(rpn_ret['labels_int32'] == 4)
+                loss_car_cls, accuracy_car_cls = fast_rcnn_heads.fast_rcnn_car_cls_losses(car_cls_score[car_idx],
+                                                                                          rpn_ret['car_cls_labels_int32'][car_idx])
+                return_dict['losses']['loss_car_cls'] = loss_car_cls
+                return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls
+
+            if cfg.MODEL.MASK_TRAIN_ON:
                 if getattr(self.Mask_Head, 'SHARE_RES5', False):
                     mask_feat = self.Mask_Head(res5_feat, rpn_ret,
                                                roi_has_mask_int32=rpn_ret['roi_has_mask_int32'])

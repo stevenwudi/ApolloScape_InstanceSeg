@@ -24,7 +24,7 @@ def get_minibatch_blob_names(is_training=True):
     return blob_names
 
 
-def get_minibatch(roidb):
+def get_minibatch(roidb, valid_keys):
     """Given a roidb, construct a minibatch sampled from it."""
     # We collect blobs from each image onto a list and then concat them into a
     # single tensor, hence we initialize each blob to an empty list
@@ -35,7 +35,7 @@ def get_minibatch(roidb):
     blobs['data'] = im_blob
     if cfg.RPN.RPN_ON:
         # RPN-only or end-to-end Faster/Mask R-CNN
-        valid = roi_data.rpn.add_rpn_blobs(blobs, im_scales, roidb)
+        valid = roi_data.rpn.add_rpn_blobs(blobs, im_scales, roidb, valid_keys=valid_keys)
     elif cfg.RETINANET.RETINANET_ON:
         raise NotImplementedError
     else:

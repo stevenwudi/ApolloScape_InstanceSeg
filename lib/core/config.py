@@ -45,6 +45,11 @@ __C.TRAIN.SCALES = (600, )
 
 # Finetune weight, it's dependant upon the test result ( or the instance count.... it's a bit hack)
 __C.TRAIN.CE_FINETUNE_WIGHT = (1, 1.20,  6.4,  14.35, 1., 2.48,  1.534,  4.088)
+
+# Finetune Car Class weight (Inverse frequencis of cars)
+__C.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT = list()
+
+
 # Max pixel size of the longest side of a scaled input image
 __C.TRAIN.MAX_SIZE = 1000
 
@@ -163,7 +168,8 @@ __C.TRAIN.GT_MIN_AREA = -1
 # Freeze the backbone architecture during training if set to True
 __C.TRAIN.FREEZE_CONV_BODY = False
 
-
+# Freeze the FPN class and box head during training if set to True
+__C.TRAIN.FREEZE_FPN =  False
 # ---------------------------------------------------------------------------- #
 # Data loader options
 # ---------------------------------------------------------------------------- #
@@ -436,6 +442,19 @@ __C.MODEL.FASTER_RCNN = False
 # Indicates the model makes instance mask predictions (as in Mask R-CNN)
 __C.MODEL.MASK_ON = False
 
+# Indicates the model train instance mask predictions (as in Mask R-CNN)
+__C.MODEL.MASK_TRAIN_ON = False
+
+
+# Indicates the model makes Pose car class predictions (as in Mask R-CNN for keypoints)
+__C.MODEL.CAR_CLS_HEAD = False
+
+# Indicates the model makes Pose rotation predictions (as in Mask R-CNN for keypoints)
+__C.MODEL.ROT_HEAD = False
+
+# Indicates the model makes Pose translation predictions (as in Mask R-CNN for keypoints)
+__C.MODEL.TRANS_HEAD = False
+
 # Indicates the model makes keypoint predictions (as in Mask R-CNN for
 # keypoints)
 __C.MODEL.KEYPOINTS_ON = False
@@ -452,7 +471,7 @@ __C.MODEL.SHARE_RES5 = False
 # Whether to load imagenet pretrained weights
 # If True, path to the weight file must be specified.
 # See: __C.RESNETS.IMAGENET_PRETRAINED_WEIGHTS
-__C.MODEL.LOAD_IMAGENET_PRETRAINED_WEIGHTS = True
+__C.MODEL.LOAD_IMAGENET_PRETRAINED_WEIGHTS = False
 
 # ---------------------------------------------------------------------------- #
 # Unsupervise Pose
@@ -730,6 +749,38 @@ __C.FPN.EXTRA_CONV_LEVELS = False
 # Use GroupNorm in the FPN-specific layers (lateral, etc.)
 __C.FPN.USE_GN = False
 
+# ---------------------------------------------------------------------------- #
+# CAR_CLS options
+# ---------------------------------------------------------------------------- #
+
+__C.CAR_CLS = AttrDict()
+
+# The type of RoI head to use for bounding box classification and regression
+# The string must match a function this is imported in modeling.model_builder
+# (e.g., 'head_builder.add_roi_2mlp_head' to specify a two hidden layer MLP)
+__C.CAR_CLS.ROI_BOX_HEAD = ''
+
+# Hidden layer dimension when using an MLP for the RoI box head
+__C.CAR_CLS.MLP_HEAD_DIM = 1024
+
+# Hidden Conv layer dimension when using Convs for the RoI box head
+__C.CAR_CLS.CONV_HEAD_DIM = 256
+
+# Number of stacked Conv layers in the RoI box head
+__C.CAR_CLS.NUM_STACKED_CONVS = 4
+
+# RoI transformation function (e.g., RoIPool or RoIAlign)
+# (RoIPoolF is the same as RoIPool; ignore the trailing 'F')
+__C.CAR_CLS.ROI_XFORM_METHOD = 'RoIAlign'
+
+# Number of grid sampling points in RoIAlign (usually use 2)
+# Only applies to RoIAlign
+__C.CAR_CLS.ROI_XFORM_SAMPLING_RATIO = 2
+
+# RoI transform output resolution
+# Note: some models may have constraints on what they can use, e.g. they use
+# pretrained FC layers like in VGG16, and will ignore this option
+__C.CAR_CLS.ROI_XFORM_RESOLUTION = 14
 
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)

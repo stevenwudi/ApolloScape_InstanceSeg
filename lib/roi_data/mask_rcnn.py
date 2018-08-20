@@ -120,3 +120,18 @@ def _expand_to_class_specific_mask_targets(masks, mask_class_labels):
             mask_targets[i, start:end] = masks[i, :]
 
     return mask_targets
+
+
+def add_car_cls_rcnn_blobs(blobs, roidb, fg_inds, sampled_labels):
+    """Add Car classification specific blobs to the input blob dictionary."""
+
+    labels_car_cls = np.ones(sampled_labels.shape) * (-1)
+    for i, ind in enumerate(fg_inds):
+        ind_temp = roidb['box_to_gt_ind_map'][ind]
+        if ind_temp == -1:
+            raise AssertionError("This is a background class")
+        else:
+            labels_car_cls[i] = roidb['car_cat_classes'][ind_temp]
+
+    blobs['car_cls_labels_int32'] = labels_car_cls
+

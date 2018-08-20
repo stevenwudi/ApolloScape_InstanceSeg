@@ -54,6 +54,7 @@ from .dataset_catalog import IM_PREFIX
 from .dataloader_wad_cvpr2018 import WAD_CVPR2018
 from .dataloader_apolloscape import ApolloScape
 from .dataloader_3d_car import Car3D
+from utilities.utils import euler_angles_to_rotation_matrix
 
 from PIL import Image
 import json
@@ -564,8 +565,12 @@ class JsonDataset(object):
             car_name = self.Car3D.car_id2name[car_pose['car_id']].name
             car = self.car_models[car_name]
             pose = np.array(car_pose['pose'])
+
             # project 3D points to 2d image plane
-            imgpts, jac = cv2.projectPoints(np.float32(car['vertices']), pose[:3], pose[3:], intrinsic_mat, distCoeffs=np.asarray([]))
+            rot_mat = euler_angles_to_rotation_matrix(pose[:3])
+            rvect, _ = cv2.Rodrigues(rot_mat)
+            imgpts, jac = cv2.projectPoints(np.float32(car['vertices']), rvect, pose[3:], intrinsic_mat, distCoeffs=None)
+
             imgpts = np.int32(imgpts).reshape(-1, 2)
 
             x1, y1, x2, y2 = imgpts[:, 0].min(), imgpts[:, 1].min(), imgpts[:, 0].max(), imgpts[:, 1].max()
@@ -675,13 +680,8 @@ def _merge_proposal_boxes_into_roidb(roidb, box_list):
     for i, entry in enumerate(roidb):
         boxes = box_list[i]
         num_boxes = boxes.shape[0]
-        gt_overlaps = np.zeros(
-            (num_boxes, entry['gt_overlaps'].shape[1]),
-            dtype=entry['gt_overlaps'].dtype
-        )
-        box_to_gt_ind_map = -np.ones(
-            (num_boxes), dtype=entry['box_to_gt_ind_map'].dtype
-        )
+        gt_overlaps = np.zeros((num_boxes, entry['gt_overlaps'].shape[1]), dtype=entry['gt_overlaps'].dtype)
+        box_to_gt_ind_map = -np.ones((num_boxes), dtype=entry['box_to_gt_ind_map'].dtype)
 
         # Note: unlike in other places, here we intentionally include all gt
         # rois, even ones marked as crowd. Boxes that overlap with crowds will

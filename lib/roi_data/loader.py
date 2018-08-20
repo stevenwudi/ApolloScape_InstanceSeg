@@ -17,16 +17,25 @@ from roi_data.minibatch import get_minibatch
 
 
 class RoiDataLoader(data.Dataset):
-    def __init__(self, roidb, num_classes, training=True):
+    def __init__(self, roidb, num_classes, training=True,
+                 valid_keys=['has_visible_keypoints', 'boxes', 'segms', 'seg_areas', 'gt_classes', 'gt_overlaps',
+                             'is_crowd', 'box_to_gt_ind_map', 'gt_keypoints']):
+        """
+        :param roidb:
+        :param num_classes:
+        :param training:
+        :param roidb_extra_keys: is Wudi's customized keys for input
+        """
         self._roidb = roidb
         self._num_classes = num_classes
         self.training = training
         self.DATA_SIZE = len(self._roidb)
+        self.valid_keys = valid_keys
 
     def __getitem__(self, index_tuple):
         index, ratio = index_tuple
         single_db = [self._roidb[index]]
-        blobs, valid = get_minibatch(single_db)
+        blobs, valid = get_minibatch(single_db, self.valid_keys)
         # TODO: Check if minibatch is valid ? If not, abandon it.
         # Need to change _worker_loop in torch.utils.data.dataloader.py.
 

@@ -1,6 +1,6 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 import sys
 import pickle
@@ -62,7 +62,7 @@ def parse_args():
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/stevenwudi/stevenwudi/PycharmProjects/CVPR_2018_WAD/Outputs/e2e_mask_rcnn_R-101-FPN_2x/Jun13-15-31-20_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='./Outputs/e2e_mask_rcnn_R-101-FPN_2x/Aug13-13-18-43_N606-TITAN32_step/ckpt/model_step99999.pth', help='checkpoint path to load')
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 
@@ -107,7 +107,7 @@ def main():
     # Some manual adjustment for the ApolloScape dataset parameters here
     cfg.TRAIN.DATASETS = 'Car3D'
     cfg.MODEL.NUM_CLASSES = 8
-    cfg.MODEL.NUMBER_CARS = 79
+    cfg.MODEL.NUMBER_CARS = 34
     cfg.TRAIN.MIN_AREA = 49   # 7*7
     cfg.TRAIN.MIN_AREA = 196   # 14*14
     cfg.TRAIN.USE_FLIPPED = False  # Currently I don't know how to handle the flipped case
@@ -188,7 +188,9 @@ def main():
     dataset = RoiDataLoader(
         roidb,
         cfg.MODEL.NUM_CLASSES,
-        training=True)
+        training=True,
+        valid_keys=['has_visible_keypoints', 'boxes', 'seg_areas', 'gt_classes', 'gt_overlaps', 'box_to_gt_ind_map',
+                    'is_crowd', 'car_cat_classes', 'poses'])
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -346,7 +348,8 @@ def main():
 
                 net_outputs = maskRCNN(**input_data)
                 training_stats.UpdateIterStats(net_outputs, inner_iter)
-                loss = net_outputs['total_loss']
+                #loss = net_outputs['total_loss']
+                loss = net_outputs['losses']['loss_car_cls']
                 loss.backward()
             optimizer.step()
             training_stats.IterToc()

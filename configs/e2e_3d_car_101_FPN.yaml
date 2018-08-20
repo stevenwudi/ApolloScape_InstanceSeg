@@ -3,6 +3,10 @@ MODEL:
   CONV_BODY: FPN.fpn_ResNet101_conv5_body
   FASTER_RCNN: True
   MASK_ON: True
+  MASK_TRAIN_ON: False   # Whether we train the mask
+  CAR_CLS_HEAD: True
+  ROT_HEAD: False
+  TRANS_HEAD: False
 
 RESNETS:
   IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'
@@ -23,6 +27,12 @@ FAST_RCNN:
   ROI_XFORM_METHOD: RoIAlign
   ROI_XFORM_RESOLUTION: 7
   ROI_XFORM_SAMPLING_RATIO: 2
+CAR_CLS:
+  ROI_BOX_HEAD: fast_rcnn_heads.roi_2mlp_head
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 14
+  ROI_XFORM_SAMPLING_RATIO: 2
+
 MRCNN:
   ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs
   RESOLUTION: 28  # (output mask resolution) default 14
@@ -35,11 +45,15 @@ TRAIN:
   #SCALES: (800,)
   SCALES: (1600, 2000)  # If it's 0, means that we don't resize it
   MAX_SIZE: 2000
-  BATCH_SIZE_PER_IM: 512
   RPN_PRE_NMS_TOP_N: 4000  # Per FPN level, 2000 default
   CE_FINETUNE_WIGHT: ( 1,  1.20,    6.4,         14.35,      1.   , 2.48,   1.53427976,    4.088)
   SNAPSHOT_ITERS: 400
 
+  BATCH_SIZE_PER_IM: 100 # we don't have so many cars per image and we care about positive clas
+  CE_CAR_CLS_FINETUNE_WIGHT: []  # Find tune car according to it's appearance
+
+  FREEZE_CONV_BODY: True
+  FREEZE_FPN: True
 TEST:
   SCORE_THRESH: 0.1
   SCALE: 0  # 2710

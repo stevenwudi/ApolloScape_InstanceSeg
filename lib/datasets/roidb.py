@@ -144,7 +144,7 @@ def filter_for_training_Car3D(roidb, cache_filepath_filtered, num_classes):
             if area >= cfg.TRAIN.MIN_AREA:
                 valid_idx.append(i)
         valid_obj_count += len(valid_idx)
-        obj_keys = ['boxes', 'car_cat_classes', 'seg_areas', 'is_crowd', 'bbox_targets', 'poses']
+        obj_keys = ['boxes', 'car_cat_classes', 'seg_areas', 'is_crowd', 'bbox_targets', 'poses', 'car_cat_classes']
         total_keys = entry.keys()
         for key in total_keys:
             if key in obj_keys:
@@ -156,19 +156,17 @@ def filter_for_training_Car3D(roidb, cache_filepath_filtered, num_classes):
                 filtered_entry[key] = entry[key]
 
         box_to_gt_ind_map = np.zeros((len(valid_idx)), dtype=np.int32)
-        gt_overlaps = np.zeros((len(valid_idx), num_classes), dtype=np.float32)
+        gt_overlaps = np.zeros((len(valid_idx), 8), dtype=np.float32)
 
         for ix in range(len(valid_idx)):
-            cls = filtered_entry['car_cat_classes'][ix]
             box_to_gt_ind_map[ix] = ix
-            gt_overlaps[ix, cls] = 1.0
+            # this is a legecy network from WAD MaskRCNN
+            gt_overlaps[ix, 4] = 1.0
 
         filtered_entry['box_to_gt_ind_map'] = box_to_gt_ind_map
         filtered_entry['gt_overlaps'] = scipy.sparse.csr_matrix(gt_overlaps)
-
-        # this is a legecy network from WAD MaskRCNN
         filtered_entry['gt_classes'] = np.ones(filtered_entry['car_cat_classes'].shape) * 4
-
+        filtered_entry['gt_classes'] = filtered_entry['gt_classes'].astype(np.int8)
         # We only add the images with valid instances
         if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:
             filtered_roidb.append(filtered_entry)

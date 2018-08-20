@@ -37,7 +37,7 @@ def get_rpn_blob_names(is_training=True):
     return blob_names
 
 
-def add_rpn_blobs(blobs, im_scales, roidb):
+def add_rpn_blobs(blobs, im_scales, roidb, valid_keys):
     """Add blobs needed training RPN-only and end-to-end Faster R-CNN models."""
     if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_RPN:
         # RPN applied to many feature levels, as in the FPN paper
@@ -62,9 +62,7 @@ def add_rpn_blobs(blobs, im_scales, roidb):
         scale = im_scales[im_i]
         im_height = np.round(entry['height'] * scale)
         im_width = np.round(entry['width'] * scale)
-        gt_inds = np.where(
-            (entry['gt_classes'] > 0) & (entry['is_crowd'] == 0)
-        )[0]
+        gt_inds = np.where((entry['gt_classes'] > 0) & (entry['is_crowd'] == 0))[0]
         gt_rois = entry['boxes'][gt_inds, :] * scale
         # TODO(rbg): gt_boxes is poorly named;
         # should be something like 'gt_rois_info'
@@ -78,17 +76,13 @@ def add_rpn_blobs(blobs, im_scales, roidb):
         # Add RPN targets
         if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_RPN:
             # RPN applied to many feature levels, as in the FPN paper
-            rpn_blobs = _get_rpn_blobs(
-                im_height, im_width, foas, all_anchors, gt_rois
-            )
+            rpn_blobs = _get_rpn_blobs(im_height, im_width, foas, all_anchors, gt_rois)
             for i, lvl in enumerate(range(k_min, k_max + 1)):
                 for k, v in rpn_blobs[i].items():
                     blobs[k + '_fpn' + str(lvl)].append(v)
         else:
             # Classical RPN, applied to a single feature level
-            rpn_blobs = _get_rpn_blobs(
-                im_height, im_width, [foa], all_anchors, gt_rois
-            )
+            rpn_blobs = _get_rpn_blobs(im_height, im_width, [foa], all_anchors, gt_rois)
             for k, v in rpn_blobs.items():
                 blobs[k].append(v)
 
@@ -96,10 +90,6 @@ def add_rpn_blobs(blobs, im_scales, roidb):
         if isinstance(v, list) and len(v) > 0:
             blobs[k] = np.concatenate(v)
 
-    valid_keys = [
-        'has_visible_keypoints', 'boxes', 'segms', 'seg_areas', 'gt_classes',
-        'gt_overlaps', 'is_crowd', 'box_to_gt_ind_map', 'gt_keypoints'
-    ]
     minimal_roidb = [{} for _ in range(len(roidb))]
     for i, e in enumerate(roidb):
         for k in valid_keys:
