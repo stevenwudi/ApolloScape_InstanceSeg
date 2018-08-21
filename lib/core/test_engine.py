@@ -268,7 +268,7 @@ def test_net(
     in a dataset using a single GPU.
     """
     assert not cfg.MODEL.RPN_ONLY, 'Use rpn_generate to generate proposals from RPN-only models'
-    dataset = JsonDataset(dataset_name)
+    dataset = JsonDataset(dataset_name, args.dataset_dir)
     timers = defaultdict(Timer)
     if ind_range is not None:
         if cfg.TEST.SOFT_NMS.ENABLED:

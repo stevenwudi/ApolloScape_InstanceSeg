@@ -25,16 +25,15 @@ def parse_args():
     """Parse in command line arguments"""
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_mask_rcnn_R-101-FPN_2x.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/stevenwudi/stevenwudi/PycharmProjects/CVPR_2018_WAD/Outputs/e2e_mask_rcnn_R-101-FPN_2x/Jun13-15-31-20_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='./Outputs/e2e_mask_rcnn_R-101-FPN_2x/Aug13-13-18-43_N606-TITAN32_step/ckpt/model_step99999.pth', help='checkpoint path to load')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
     parser.add_argument('--load_ckpt', default='./Outputs/e2e_3d_car_101_FPN/Aug20-23-26-26_N606-TITAN32_step/ckpt/model_step9176.pth', help='checkpoint path to load')
+    parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train')
 
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--output_dir', help='output directory to save the testing results. If not provided defaults to [args.load_ckpt|args.load_detectron]/../test.')
     parser.add_argument('--set', dest='set_cfgs', help='set config keys, will overwrite config in the cfg_file. See lib/core/config.py for all options', default=[], nargs='*')
-    # val: [0, 8327], test: [0, 6597]
-    parser.add_argument('--range', default=[0, 8327], help='start (inclusive) and end (exclusive) indices', type=int, nargs=2)
+    # val: [0, 208], test: [0, 1041]
+    parser.add_argument('--range', default=[0, 2], help='start (inclusive) and end (exclusive) indices', type=int, nargs=2)
     parser.add_argument('--multi-gpu-testing', help='using multiple gpus for inference', default=False, action='store_true')
     parser.add_argument('--vis', default=True,  dest='vis', help='visualize detections', action='store_true')
     parser.add_argument('--list_flag', default='val', help='Choosing between [val, test]')
@@ -69,8 +68,9 @@ if __name__ == '__main__':
         merge_cfg_from_list(args.set_cfgs)
 
     # Manually change the following:
-    cfg.TEST.DATASETS = ['ApolloScape',]
+    cfg.TEST.DATASETS = ['Car3D',]
     cfg.MODEL.NUM_CLASSES = 8
+    cfg.MODEL.NUMBER_CARS = 34
     assert_and_infer_cfg()
     logger.info('Testing with config:')
     logger.info(pprint.pformat(cfg))
@@ -85,22 +85,3 @@ if __name__ == '__main__':
         ind_range=args.range,
         multi_gpu_testing=args.multi_gpu_testing,
         check_expected_results=True)
-
-"""
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=all                  | maxDets=100 ] = 0.315
- Average Precision  (AP) @[ IoU=0.50      | area=all                  | maxDets=100 ] = 0.502
- Average Precision  (AP) @[ IoU=0.75      | area=all                  | maxDets=100 ] = 0.330
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=extra-small (0-14)   | maxDets=100 ] = 0.043 | (numGT, numDt) = 28858 163896
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium(28-56)        | maxDets=100 ] = 0.390 | (numGT, numDt) = 38493 134063
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=large(56-112)        | maxDets=100 ] = 0.478 | (numGT, numDt) = 21262 51016
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=extra-large(112-512) | maxDets=100 ] = 0.533 | (numGT, numDt) = 14916 24344
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=uber-large(512 !!!!) | maxDets=100 ] = 0.820 | (numGT, numDt) =  1254  3050
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=all                  | maxDets=  1 ] = 0.233
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=all                  | maxDets= 10 ] = 0.385
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=all                  | maxDets=100 ] = 0.425
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=extra-small (0-14)   | maxDets=100 ] = 0.139 | (numGT, numDt) = 28858 163896
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium(28-56)        | maxDets=100 ] = 0.511 | (numGT, numDt) = 38493 134063
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=large(56-112)        | maxDets=100 ] = 0.602 | (numGT, numDt) = 21262 51016
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=extra-large(112-512) | maxDets=100 ] = 0.677 | (numGT, numDt) = 14916 24344
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=uber-large(512 !!!!) | maxDets=100 ] = 0.869 | (numGT, numDt) =  1254  3050
-"""

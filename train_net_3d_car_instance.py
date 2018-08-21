@@ -1,6 +1,6 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2,3'
 
 import sys
 import pickle
@@ -51,7 +51,7 @@ def parse_args():
     # These options has the highest prioity and can overwrite the values in config file or values set by set_cfgs. `None` means do not overwrite.
     parser.add_argument('--bs', dest='batch_size', help='Explicitly specify to overwrite the value comed from cfg_file.', type=int)
     parser.add_argument('--nw', dest='num_workers', help='Explicitly specify to overwrite number of workers to load data. Defaults to 4', type=int)
-    parser.add_argument('--iter_size', help='Update once every iter_size steps, as in Caffe.', default=2, type=int)
+    parser.add_argument('--iter_size', help='Update once every iter_size steps, as in Caffe.', default=1, type=int)
     parser.add_argument('--o', dest='optimizer', help='Training optimizer.', default=None)
     parser.add_argument('--lr', help='Base learning rate.', default=None, type=float)
     parser.add_argument('--lr_decay_gamma', help='Learning rate decay rate.', default=None, type=float)
@@ -108,7 +108,7 @@ def main():
     cfg.TRAIN.DATASETS = 'Car3D'
     cfg.MODEL.NUM_CLASSES = 8
     cfg.MODEL.NUMBER_CARS = 34
-    cfg.TRAIN.MIN_AREA = 49   # 7*7
+    #cfg.TRAIN.MIN_AREA = 49   # 7*7
     cfg.TRAIN.MIN_AREA = 196   # 14*14
     cfg.TRAIN.USE_FLIPPED = False  # Currently I don't know how to handle the flipped case
     cfg.SOLVER.BASE_LR = 0.005
