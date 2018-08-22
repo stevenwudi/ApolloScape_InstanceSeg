@@ -360,6 +360,13 @@ class Generalized_RCNN(nn.Module):
         return mask_pred
 
     @check_inference
+    def car_cls_net(self, blob_conv, rpn_blob):
+        """For inference"""
+        car_cls_feat = self.car_cls_Head(blob_conv, rpn_blob)
+        car_cls = self.car_cls_Outs(car_cls_feat)
+        return car_cls
+
+    @check_inference
     def keypoint_net(self, blob_conv, rpn_blob):
         """For inference"""
         kps_feat = self.Keypoint_Head(blob_conv, rpn_blob)

@@ -80,6 +80,11 @@ TEST:
     SCALE_SIZE_DEP: False
     ASPECT_RATIOS: ()
     ASPECT_RATIO_H_FLIP: False
+
+  CAR_CLS_AUG:
+    ENABLED: False
+
+
   MASK_AUG:
     ENABLED: True
     HEUR: SOFT_AVG

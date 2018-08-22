@@ -64,11 +64,9 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
 
     timers['im_detect_bbox'].tic()
     if cfg.TEST.BBOX_AUG.ENABLED:
-        scores, boxes, im_scale, blob_conv = im_detect_bbox_aug(
-            model, im, box_proposals)
+        scores, boxes, im_scale, blob_conv = im_detect_bbox_aug(model, im, box_proposals)
     else:
-        scores, boxes, im_scale, blob_conv = im_detect_bbox(
-            model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, box_proposals)
+        scores, boxes, im_scale, blob_conv = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, box_proposals)
     timers['im_detect_bbox'].toc()
 
     # score and boxes are from the whole image after score thresholding and nms
@@ -93,6 +91,21 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
     else:
         cls_segms = None
 
+    # Further head for 3d car pose estimation
+    if cfg.MODEL.CAR_CLS_HEAD and boxes.shape[0] > 0:
+        timers['im_car_cls'].tic()
+        if cfg.TEST.CAR_CLS_AUG.ENABLED:
+            raise Exception('Not implemented')
+        else:
+            car_cls = im_car_cls(model, im_scale, boxes, blob_conv)
+        timers['im_detect_mask'].toc()
+
+        # timers['misc_car_cls'].tic()
+        # car_cls_misc = car_cls_results(cls_boxes, car_cls, boxes, im.shape[0], im.shape[1])
+        # timers['misc_car_cls'].toc()
+    else:
+        car_cls = None
+
     if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
         timers['im_detect_keypoints'].tic()
         if cfg.TEST.KPS_AUG.ENABLED:
@@ -107,7 +120,7 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
     else:
         cls_keyps = None
 
-    return cls_boxes, cls_segms, cls_keyps
+    return cls_boxes, cls_segms, cls_keyps, car_cls
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
@@ -286,8 +299,7 @@ def im_detect_bbox_aug(model, im, box_proposals=None):
     return scores_c, boxes_c, im_scale_i, blob_conv_i
 
 
-def im_detect_bbox_hflip(
-        model, im, target_scale, target_max_size, box_proposals=None):
+def im_detect_bbox_hflip(model, im, target_scale, target_max_size, box_proposals=None):
     """Performs bbox detection on the horizontally flipped image.
     Function signature is the same as for im_detect_bbox.
     """
@@ -310,8 +322,7 @@ def im_detect_bbox_hflip(
     return scores_hf, boxes_inv, im_scale
 
 
-def im_detect_bbox_scale(
-        model, im, target_scale, target_max_size, box_proposals=None, hflip=False):
+def im_detect_bbox_scale(model, im, target_scale, target_max_size, box_proposals=None, hflip=False):
     """Computes bbox detections at the given scale.
     Returns predictions in the original image space.
     """
@@ -326,8 +337,7 @@ def im_detect_bbox_scale(
     return scores_scl, boxes_scl
 
 
-def im_detect_bbox_aspect_ratio(
-        model, im, aspect_ratio, box_proposals=None, hflip=False):
+def im_detect_bbox_aspect_ratio(model, im, aspect_ratio, box_proposals=None, hflip=False):
     """Computes bbox detections at the given width-relative aspect ratio.
     Returns predictions in the original image space.
     """
@@ -360,6 +370,34 @@ def im_detect_bbox_aspect_ratio(
     boxes_inv = box_utils.aspect_ratio(boxes_ar, 1.0 / aspect_ratio)
 
     return scores_ar, boxes_inv
+
+
+def im_car_cls(model, im_scale, boxes, blob_conv):
+    """Infer car class.
+    This function must be called after im_detect_bbox as it assumes that the workspace is already populated
+    with the necessary blobs.
+
+    Arguments:
+        model (DetectionModelHelper): the detection model to use
+        im_scale (list): image blob scales as returned by im_detect_bbox
+        boxes (ndarray): R x 4 array of bounding box detections (e.g., as
+            returned by im_detect_bbox)
+        blob_conv (Variable): base features from the backbone network.
+
+    Returns:
+        pred_masks (ndarray): R x 1 array of car class vector output by the network
+    """
+
+    inputs = {'rois': _get_rois_blob(boxes, im_scale)}
+
+    # Add multi-level rois for FPN
+    if cfg.FPN.MULTILEVEL_ROIS:
+        _add_multilevel_rois_for_test(inputs, 'rois')
+
+    pred_car_cls = model.module.car_cls_net(blob_conv, inputs)
+    pred_car_cls = pred_car_cls.data.cpu().numpy().squeeze()
+
+    return pred_car_cls
 
 
 def im_detect_mask(model, im_scale, boxes, blob_conv):
@@ -492,8 +530,7 @@ def im_detect_mask_hflip(model, im, target_scale, target_max_size, boxes):
     return masks_inv
 
 
-def im_detect_mask_scale(
-        model, im, target_scale, target_max_size, boxes, hflip=False):
+def im_detect_mask_scale(model, im, target_scale, target_max_size, boxes, hflip=False):
     """Computes masks at the given scale."""
     if hflip:
         masks_scl = im_detect_mask_hflip(
@@ -667,8 +704,7 @@ def im_detect_keypoints_hflip(model, im, target_scale, target_max_size, boxes):
     return heatmaps_inv
 
 
-def im_detect_keypoints_scale(
-    model, im, target_scale, target_max_size, boxes, hflip=False):
+def im_detect_keypoints_scale(model, im, target_scale, target_max_size, boxes, hflip=False):
     """Computes keypoint predictions at the given scale."""
     if hflip:
         heatmaps_scl = im_detect_keypoints_hflip(
@@ -680,8 +716,7 @@ def im_detect_keypoints_scale(
     return heatmaps_scl
 
 
-def im_detect_keypoints_aspect_ratio(
-    model, im, aspect_ratio, boxes, hflip=False):
+def im_detect_keypoints_aspect_ratio(model, im, aspect_ratio, boxes, hflip=False):
     """Detects keypoints at the given width-relative aspect ratio."""
 
     # Perform keypoint detectionon the transformed image
@@ -914,9 +949,7 @@ def _add_multilevel_rois_for_test(blobs, name):
     lvl_min = cfg.FPN.ROI_MIN_LEVEL
     lvl_max = cfg.FPN.ROI_MAX_LEVEL
     lvls = fpn_utils.map_rois_to_fpn_levels(blobs[name][:, 1:5], lvl_min, lvl_max)
-    fpn_utils.add_multilevel_roi_blobs(
-        blobs, name, blobs[name], lvls, lvl_min, lvl_max
-    )
+    fpn_utils.add_multilevel_roi_blobs(blobs, name, blobs[name], lvls, lvl_min, lvl_max)
 
 
 def _get_blobs(im, rois, target_scale, target_max_size):

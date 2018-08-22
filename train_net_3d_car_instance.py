@@ -62,7 +62,8 @@ def parse_args():
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='./Outputs/e2e_mask_rcnn_R-101-FPN_2x/Aug13-13-18-43_N606-TITAN32_step/ckpt/model_step99999.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='./Outputs/e2e_mask_rcnn_R-101-FPN_2x/Aug13-13-18-43_N606-TITAN32_step/ckpt/model_step99999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='./Outputs/e2e_3d_car_101_FPN/Aug20-23-26-26_N606-TITAN32_step/ckpt/model_step33454.pth', help='checkpoint path to load')
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 

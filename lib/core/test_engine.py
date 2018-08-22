@@ -311,7 +311,7 @@ def test_net(
                 box_proposals = None
 
             im = cv2.imread(entry['image'])
-            cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(model, im, box_proposals, timers)
+            cls_boxes_i, cls_segms_i, cls_keyps_i, car_cls_i = im_detect_all(model, im, box_proposals, timers)
 
             extend_results(i, all_boxes, cls_boxes_i)
             if cls_segms_i is not None:
@@ -345,18 +345,17 @@ def test_net(
 
             if cfg.VIS:
                 im_name = os.path.splitext(os.path.basename(entry['image']))[0]
-                vis_utils.vis_one_image_cvpr2018_wad(
+                vis_utils.vis_one_image_eccv2018_car_3d(
                     im[:, :, ::-1],
                     '{:d}_{:s}'.format(i, im_name),
                     os.path.join(output_dir, 'vis'),
-                    cls_boxes_i,
+                    boxes=cls_boxes_i,
+                    car_cls_prob=car_cls_i,
                     segms=cls_segms_i,
                     keypoints=cls_keyps_i,
-                    thresh=0.5,
+                    thresh=0.9,
                     box_alpha=0.8,
-                    dataset=dataset.ApolloScape,
-                    show_class=True
-                )
+                    dataset=dataset.Car3D)
         cfg_yaml = yaml.dump(cfg)
         save_object(
             dict(
