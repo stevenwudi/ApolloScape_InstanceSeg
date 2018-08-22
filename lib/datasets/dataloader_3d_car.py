@@ -132,7 +132,9 @@ class Car3D(WAD_CVPR2018):
         return self.car_models
 
     def get_intrinsic_mat(self, image_name):
-        intrinsic = self.dataset.get_intrinsic(image_name)
+        #intrinsic = self.dataset.get_intrinsic(image_name)
+        # Intrinsic should always use camera 5
+        intrinsic = self.dataset.get_intrinsic('Camera_5')
         intrinsic_mat = np.zeros((3, 3))
         intrinsic_mat[0, 0] = intrinsic[0]
         intrinsic_mat[1, 1] = intrinsic[1]
