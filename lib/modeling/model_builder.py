@@ -108,7 +108,8 @@ class Generalized_RCNN(nn.Module):
         if cfg.MODEL.CAR_CLS_HEAD_ON:
             self.car_cls_Head = get_func(cfg.CAR_CLS.ROI_BOX_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
             self.car_cls_Outs = car_3d_pose_heads.fast_rcnn_outputs_car_cls_rot(self.car_cls_Head.dim_out)
-
+            if cfg.CAR_CLS.SIM_MAT_LOSS:
+                self.shape_sim_mat = np.loadtxt('sim_mat.txt')
         # Mask Branch
         if cfg.MODEL.MASK_ON:
             self.Mask_Head = get_func(cfg.MRCNN.ROI_MASK_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
@@ -213,7 +214,8 @@ class Generalized_RCNN(nn.Module):
                     # TODO: add thos shared_res5 module
                     pass
                 else:
-                    car_cls_score, rot_pred = self.car_cls_Outs(box_feat)
+                    car_cls_rot_feat = self.car_cls_Head(blob_conv, rpn_ret)
+                    car_cls_score, rot_pred = self.car_cls_Outs(car_cls_rot_feat)
                     # car classification loss, we only fine tune the labelled cars
 
                 # we only use the car cls
@@ -364,8 +366,8 @@ class Generalized_RCNN(nn.Module):
     def car_cls_net(self, blob_conv, rpn_blob):
         """For inference"""
         car_cls_feat = self.car_cls_Head(blob_conv, rpn_blob)
-        car_cls = self.car_cls_Outs(car_cls_feat)
-        return car_cls
+        car_cls_score, rot_pred = self.car_cls_Outs(car_cls_feat)
+        return car_cls_score, rot_pred
 
     @check_inference
     def keypoint_net(self, blob_conv, rpn_blob):

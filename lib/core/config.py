@@ -795,6 +795,10 @@ __C.CAR_CLS.ROI_XFORM_SAMPLING_RATIO = 2
 __C.CAR_CLS.ROI_XFORM_RESOLUTION = 14
 
 __C.CAR_CLS.CLS_SPECIFIC_ROT = False
+
+
+# Using Similarity matrix to reduce the car classificatin penalty: we only need their shapes to be similar
+__C.CAR_CLS.SIM_MAT_LOSS = False
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)
 # ---------------------------------------------------------------------------- #

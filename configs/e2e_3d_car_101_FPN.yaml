@@ -35,7 +35,7 @@ CAR_CLS:
   ROI_XFORM_RESOLUTION: 7
   ROI_XFORM_SAMPLING_RATIO: 2
   CLS_SPECIFIC_ROT: False # Use class specific mask predictions if True (otherwise use class agnostic rot predictions)
-
+  SIM_MAT_LOSS: True
 
 #ROT_HEAD:
 #  ROI_ROT_HEAD: 3d_pose_head.roi_car_cls_rot_head
