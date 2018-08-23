@@ -109,7 +109,9 @@ class Generalized_RCNN(nn.Module):
             self.car_cls_Head = get_func(cfg.CAR_CLS.ROI_BOX_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
             self.car_cls_Outs = car_3d_pose_heads.fast_rcnn_outputs_car_cls_rot(self.car_cls_Head.dim_out)
             if cfg.CAR_CLS.SIM_MAT_LOSS:
-                self.shape_sim_mat = np.loadtxt('sim_mat.txt')
+                self.shape_sim_mat = np.loadtxt('./utilities/sim_mat.txt')
+                unique_car_models = np.array(cfg.TRAIN.CAR_MODELS)
+                self.shape_sim_mat_loss = self.shape_sim_mat[unique_car_models, :][:, unique_car_models]
         # Mask Branch
         if cfg.MODEL.MASK_ON:
             self.Mask_Head = get_func(cfg.MRCNN.ROI_MASK_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
@@ -220,7 +222,21 @@ class Generalized_RCNN(nn.Module):
 
                 # we only use the car cls
                 car_idx = np.where(rpn_ret['labels_int32'] == 4)
-                loss_car_cls, loss_rot, accuracy_car_cls = car_3d_pose_heads.fast_rcnn_car_cls_rot_losses(car_cls_score[car_idx], rot_pred[car_idx], rpn_ret['car_cls_labels_int32'][car_idx], rpn_ret['quaternions'][car_idx])
+
+                if len(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT):
+                    ce_weight = np.array(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT)
+                else:
+                    ce_weight = None
+                if cfg.CAR_CLS.SIM_MAT_LOSS:
+                    shape_sim_mat_loss_mat = self.shape_sim_mat_loss[rpn_ret['car_cls_labels_int32'][car_idx].astype('int64')]
+                else:
+                    shape_sim_mat_loss_mat = None
+                loss_car_cls, loss_rot, accuracy_car_cls = car_3d_pose_heads.fast_rcnn_car_cls_rot_losses(car_cls_score[car_idx],
+                                                                                                          rot_pred[car_idx],
+                                                                                                          rpn_ret['car_cls_labels_int32'][car_idx],
+                                                                                                          rpn_ret['quaternions'][car_idx],
+                                                                                                          ce_weight,
+                                                                                                          shape_sim_mat_loss_mat)
                 return_dict['losses']['loss_car_cls'] = loss_car_cls
                 return_dict['losses']['loss_rot'] = loss_rot
                 return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls

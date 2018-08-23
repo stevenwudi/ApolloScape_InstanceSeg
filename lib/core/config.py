@@ -49,7 +49,7 @@ __C.TRAIN.CE_FINETUNE_WIGHT = (1, 1.20,  6.4,  14.35, 1., 2.48,  1.534,  4.088)
 # Finetune Car Class weight (Inverse frequencis of cars)
 __C.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT = list()
 
-
+__C.TRAIN.CAR_MODELS = list()
 
 # Max pixel size of the longest side of a scaled input image
 __C.TRAIN.MAX_SIZE = 1000

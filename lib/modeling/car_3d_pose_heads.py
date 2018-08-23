@@ -47,16 +47,30 @@ class fast_rcnn_outputs_car_cls_rot(nn.Module):
         return cls_score, rot_pred
 
 
-def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, label_int32, quaternions):
+def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, label_int32, quaternions,
+                                 ce_weight=None, shape_sim_mat_loss_mat=None):
     # For car classification loss, we only have classification losses
     # Or should we use sim_mat?
     device_id = cls_score.get_device()
     rois_label = Variable(torch.from_numpy(label_int32.astype('int64'))).cuda(device_id)
-    if len(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT):
-        ce_weight = Variable(torch.from_numpy(np.array(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT)).float()).cuda(device_id)
-        loss_cls = F.cross_entropy(cls_score, rois_label, ce_weight)
+
+    if len(shape_sim_mat_loss_mat):
+        if len(ce_weight):
+            coeff = shape_sim_mat_loss_mat * ce_weight
+        else:
+            coeff = shape_sim_mat_loss_mat
+
+        loss_cls = Variable(torch.from_numpy(np.array(0)).float()).cuda(device_id)
+        for i in range(len(cls_score)):
+            coeff_car = Variable(torch.from_numpy(np.array(coeff[i])).float()).cuda(device_id)
+            loss_cls += F.cross_entropy(cls_score[i].unsqueeze(0), rois_label[i].unsqueeze(0), coeff_car)
+        loss_cls /= len(cls_score)
     else:
-        loss_cls = F.cross_entropy(cls_score, rois_label)
+        if len(ce_weight):
+            ce_weight = Variable(torch.from_numpy(np.array(ce_weight)).float()).cuda(device_id)
+            loss_cls = F.cross_entropy(cls_score, rois_label, ce_weight)
+        else:
+            loss_cls = F.cross_entropy(cls_score, rois_label)
 
     # class accuracy
     cls_preds = cls_score.max(dim=1)[1].type_as(rois_label)
