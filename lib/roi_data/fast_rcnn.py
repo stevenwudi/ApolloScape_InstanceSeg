@@ -52,9 +52,10 @@ def get_fast_rcnn_blob_names(is_training=True):
         blob_names += ['bbox_inside_weights']
         blob_names += ['bbox_outside_weights']
 
-    if is_training and cfg.MODEL.CAR_CLS_HEAD:
+    if is_training and cfg.MODEL.CAR_CLS_HEAD_ON:
         # car_cls_label_int32 blob: categorical labels for car classification
         blob_names += ['car_cls_labels_int32']
+        blob_names += ['quaternions']
 
     if is_training and cfg.MODEL.MASK_ON:
         # 'mask_rois': RoIs sampled for training the mask prediction branch.
@@ -191,7 +192,7 @@ def _sample_rois(roidb, im_scale, batch_idx):
         bbox_outside_weights=bbox_outside_weights)
 
     # Optionally add CAR_CLS_HEAD blobs
-    if cfg.MODEL.CAR_CLS_HEAD:
+    if cfg.MODEL.CAR_CLS_HEAD_ON:
         roi_data.mask_rcnn.add_car_cls_rcnn_blobs(blob_dict, roidb, fg_inds, sampled_labels)
 
     # Optionally add Mask R-CNN blobs

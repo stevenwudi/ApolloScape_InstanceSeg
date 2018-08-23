@@ -619,9 +619,9 @@ class JsonDataset(object):
         entry['box_to_gt_ind_map'] = np.append(entry['box_to_gt_ind_map'], box_to_gt_ind_map)
         # newly added for 3d car
         entry['visible_rate'] = np.append(entry['visible_rate'], visible_rate)
-        entry['poses'] = np.append(entry['poses'], poses)
+        entry['poses'] = np.append(entry['poses'], poses, axis=0)
         entry['car_cat_classes'] = np.append(entry['car_cat_classes'], car_cat_classes)
-        entry['quaternions'] = np.append(entry['quaternions'], quaternions)
+        entry['quaternions'] = np.append(entry['quaternions'], quaternions, axis=0)
 
     def _add_gt_from_cache(self, roidb, cache_filepath):
         """Add ground truth annotation metadata from cached file."""

@@ -48,52 +48,6 @@ class fast_rcnn_outputs(nn.Module):
         return cls_score, bbox_pred
 
 
-class fast_rcnn_outputs_car_cls(nn.Module):
-    def __init__(self, dim_in):
-        super().__init__()
-        self.cls_score = nn.Linear(dim_in, cfg.MODEL.NUMBER_CARS)
-        self._init_weights()
-
-    def _init_weights(self):
-        init.normal_(self.cls_score.weight, std=0.01)
-        init.constant_(self.cls_score.bias, 0)
-
-    def detectron_weight_mapping(self):
-        # historical code for load checkpoint, in effect, this will never return anything
-        detectron_weight_mapping = {
-            'cls_score.weight': 'cls_score_w',
-            'cls_score.bias': 'cls_score_b',
-        }
-        orphan_in_detectron = []
-        return detectron_weight_mapping, orphan_in_detectron
-
-    def forward(self, x):
-        if x.dim() == 4:
-            x = x.squeeze(3).squeeze(2)
-        cls_score = self.cls_score(x)
-        if not self.training:
-            cls_score = F.softmax(cls_score, dim=1)
-        return cls_score
-
-
-def fast_rcnn_car_cls_losses(cls_score, label_int32):
-    # For car classification loss, we only have classification losses
-    # Or should we use sim_mat?
-    device_id = cls_score.get_device()
-    rois_label = Variable(torch.from_numpy(label_int32.astype('int64'))).cuda(device_id)
-    if len(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT):
-        ce_weight = Variable(torch.from_numpy(np.array(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT)).float()).cuda(device_id)
-        loss_cls = F.cross_entropy(cls_score, rois_label, ce_weight)
-    else:
-        loss_cls = F.cross_entropy(cls_score, rois_label)
-
-    # class accuracy
-    cls_preds = cls_score.max(dim=1)[1].type_as(rois_label)
-    accuracy_cls = cls_preds.eq(rois_label).float().mean(dim=0)
-
-    return loss_cls, accuracy_cls
-
-
 def fast_rcnn_losses(cls_score, bbox_pred, label_int32, bbox_targets,
                      bbox_inside_weights, bbox_outside_weights):
     device_id = cls_score.get_device()

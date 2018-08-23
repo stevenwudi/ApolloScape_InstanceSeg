@@ -18,8 +18,7 @@ from roi_data.minibatch import get_minibatch
 
 class RoiDataLoader(data.Dataset):
     def __init__(self, roidb, num_classes, training=True,
-                 valid_keys=['has_visible_keypoints', 'boxes', 'segms', 'seg_areas', 'gt_classes', 'gt_overlaps',
-                             'is_crowd', 'box_to_gt_ind_map', 'gt_keypoints']):
+                 valid_keys=[]):
         """
         :param roidb:
         :param num_classes:

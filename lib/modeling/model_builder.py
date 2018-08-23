@@ -14,6 +14,7 @@ from modeling.roi_xfrom.roi_align.functions.roi_align import RoIAlignFunction
 import modeling.rpn_heads as rpn_heads
 import modeling.fast_rcnn_heads as fast_rcnn_heads
 import modeling.mask_rcnn_heads as mask_rcnn_heads
+import modeling.car_3d_pose_heads as car_3d_pose_heads
 import modeling.keypoint_rcnn_heads as keypoint_rcnn_heads
 import utils.blob as blob_utils
 import utils.net as net_utils
@@ -104,9 +105,9 @@ class Generalized_RCNN(nn.Module):
             self.Box_Outs = fast_rcnn_heads.fast_rcnn_outputs(self.Box_Head.dim_out)
 
         # BBOX Branch for finer car model classification
-        if cfg.MODEL.CAR_CLS_HEAD:
+        if cfg.MODEL.CAR_CLS_HEAD_ON:
             self.car_cls_Head = get_func(cfg.CAR_CLS.ROI_BOX_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
-            self.car_cls_Outs = fast_rcnn_heads.fast_rcnn_outputs_car_cls(self.car_cls_Head.dim_out)
+            self.car_cls_Outs = car_3d_pose_heads.fast_rcnn_outputs_car_cls_rot(self.car_cls_Head.dim_out)
 
         # Mask Branch
         if cfg.MODEL.MASK_ON:
@@ -207,19 +208,19 @@ class Generalized_RCNN(nn.Module):
             return_dict['losses']['loss_bbox'] = loss_bbox
             return_dict['metrics']['accuracy_cls'] = accuracy_cls
 
-            if cfg.MODEL.CAR_CLS_HEAD:
+            if cfg.MODEL.CAR_CLS_HEAD_ON:
                 if getattr(self.car_cls_Head, 'SHARE_RES5', False):
-                    # TODO: add thos sjared_res5 module
+                    # TODO: add thos shared_res5 module
                     pass
                 else:
-                    car_cls_score = self.car_cls_Outs(box_feat)
+                    car_cls_score, rot_pred = self.car_cls_Outs(box_feat)
                     # car classification loss, we only fine tune the labelled cars
 
                 # we only use the car cls
                 car_idx = np.where(rpn_ret['labels_int32'] == 4)
-                loss_car_cls, accuracy_car_cls = fast_rcnn_heads.fast_rcnn_car_cls_losses(car_cls_score[car_idx],
-                                                                                          rpn_ret['car_cls_labels_int32'][car_idx])
+                loss_car_cls, loss_rot, accuracy_car_cls = car_3d_pose_heads.fast_rcnn_car_cls_rot_losses(car_cls_score[car_idx], rot_pred[car_idx], rpn_ret['car_cls_labels_int32'][car_idx], rpn_ret['quaternions'][car_idx])
                 return_dict['losses']['loss_car_cls'] = loss_car_cls
+                return_dict['losses']['loss_rot'] = loss_rot
                 return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls
 
             if cfg.MODEL.MASK_TRAIN_ON:

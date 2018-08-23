@@ -50,6 +50,7 @@ __C.TRAIN.CE_FINETUNE_WIGHT = (1, 1.20,  6.4,  14.35, 1., 2.48,  1.534,  4.088)
 __C.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT = list()
 
 
+
 # Max pixel size of the longest side of a scaled input image
 __C.TRAIN.MAX_SIZE = 1000
 
@@ -454,10 +455,10 @@ __C.MODEL.MASK_TRAIN_ON = False
 
 
 # Indicates the model makes Pose car class predictions (as in Mask R-CNN for keypoints)
-__C.MODEL.CAR_CLS_HEAD = False
+__C.MODEL.CAR_CLS_HEAD_ON = False
 
-# Indicates the model makes Pose rotation predictions (as in Mask R-CNN for keypoints)
-__C.MODEL.ROT_HEAD = False
+# Indicates the model makes Pose car class predictions (as in Mask R-CNN for keypoints)
+__C.MODEL.ROT_HEAD_ON = False
 
 # Indicates the model makes Pose translation predictions (as in Mask R-CNN for keypoints)
 __C.MODEL.TRANS_HEAD = False
@@ -712,6 +713,10 @@ __C.FPN = AttrDict()
 # FPN is enabled if True
 __C.FPN.FPN_ON = False
 
+# Show FPN loss if True
+__C.FPN.FPN_LOSS_SHOW = False
+
+
 # Channel dimension of the FPN feature levels
 __C.FPN.DIM = 256
 
@@ -789,6 +794,7 @@ __C.CAR_CLS.ROI_XFORM_SAMPLING_RATIO = 2
 # pretrained FC layers like in VGG16, and will ignore this option
 __C.CAR_CLS.ROI_XFORM_RESOLUTION = 14
 
+__C.CAR_CLS.CLS_SPECIFIC_ROT = False
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)
 # ---------------------------------------------------------------------------- #

@@ -1,6 +1,6 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
 
 import sys
 import pickle
@@ -63,7 +63,7 @@ def parse_args():
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='./Outputs/e2e_mask_rcnn_R-101-FPN_2x/Aug13-13-18-43_N606-TITAN32_step/ckpt/model_step99999.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='./Outputs/e2e_3d_car_101_FPN/Aug20-23-26-26_N606-TITAN32_step/ckpt/model_step33454.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_3d_car_101_FPN/Aug22-17-18-29_N606-TITAN32_step/ckpt/model_step22063.pth', help='checkpoint path to load')
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 
@@ -191,7 +191,7 @@ def main():
         cfg.MODEL.NUM_CLASSES,
         training=True,
         valid_keys=['has_visible_keypoints', 'boxes', 'seg_areas', 'gt_classes', 'gt_overlaps', 'box_to_gt_ind_map',
-                    'is_crowd', 'car_cat_classes', 'poses'])
+                    'is_crowd', 'car_cat_classes', 'poses', 'quaternions'])
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -350,7 +350,7 @@ def main():
                 net_outputs = maskRCNN(**input_data)
                 training_stats.UpdateIterStats(net_outputs, inner_iter)
                 #loss = net_outputs['total_loss']
-                loss = net_outputs['losses']['loss_car_cls']
+                loss = net_outputs['losses']['loss_car_cls'] + net_outputs['losses']['loss_rot']
                 loss.backward()
             optimizer.step()
             training_stats.IterToc()

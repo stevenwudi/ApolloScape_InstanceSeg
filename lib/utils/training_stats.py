@@ -85,7 +85,7 @@ class TrainingStats(object):
             total_loss += loss
             loss_data = loss.data[0]
             model_out['losses'][k] = loss
-            if cfg.FPN.FPN_ON:
+            if cfg.FPN.FPN_LOSS_SHOW:
                 if k.startswith('loss_rpn_cls_'):
                     loss_rpn_cls_data += loss_data
                 elif k.startswith('loss_rpn_bbox_'):

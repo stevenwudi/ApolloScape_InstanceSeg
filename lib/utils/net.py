@@ -64,6 +64,7 @@ def decay_learning_rate(optimizer, cur_lr, decay_rate):
                     ratio > cfg.SOLVER.SCALE_MOMENTUM_THRESHOLD:
                 _CorrectMomentum(optimizer, param_group['params'], new_lr / cur_lr)
 
+
 def update_learning_rate(optimizer, cur_lr, new_lr):
     """Update learning rate"""
     if cur_lr != new_lr:
@@ -158,7 +159,7 @@ def load_ckpt(model, ckpt):
     mapping, _ = model.detectron_weight_mapping
     state_dict = {}
     for name in ckpt:
-        if mapping[name]:
+        if name in mapping.keys():
             state_dict[name] = ckpt[name]
     model.load_state_dict(state_dict, strict=False)
 
