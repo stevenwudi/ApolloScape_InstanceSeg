@@ -54,7 +54,7 @@ from .dataset_catalog import IM_PREFIX
 from .dataloader_wad_cvpr2018 import WAD_CVPR2018
 from .dataloader_apolloscape import ApolloScape
 from .dataloader_3d_car import Car3D
-from utilities.utils import euler_angles_to_rotation_matrix
+from utilities.utils import euler_angles_to_rotation_matrix, euler_angles_to_quaternions
 
 from PIL import Image
 import json
@@ -338,6 +338,7 @@ class JsonDataset(object):
         entry['visible_rate'] = np.empty(0, dtype=np.float32)
         entry['poses'] = np.empty((0, 6), dtype=np.float32)
         entry['car_cat_classes'] = np.empty(0, dtype=np.int32)
+        entry['quaternions'] = np.empty((0, 4), dtype=np.float32)
         return entry
 
     def _add_gt_annotations(self, entry):
@@ -594,6 +595,8 @@ class JsonDataset(object):
         # newly added for 3d car
         visible_rate = np.zeros((num_valid_objs), dtype=np.float32)
         poses = np.zeros((num_valid_objs, 6), dtype=np.float32)
+        quaternions = np.zeros((num_valid_objs, 4), dtype=np.float32)
+
         car_cat_classes = np.zeros((num_valid_objs), dtype=np.int32)
 
         for ix, obj in enumerate(valid_objs):
@@ -606,6 +609,7 @@ class JsonDataset(object):
             gt_overlaps[ix, car_class] = 1.0
             visible_rate[ix] = obj['visible_rate']
             poses[ix] = obj['pose']
+            quaternions[ix] = euler_angles_to_quaternions(np.array([obj['pose'][:3]]))
 
         entry['boxes'] = np.append(entry['boxes'], boxes, axis=0)
         entry['seg_areas'] = np.append(entry['seg_areas'], seg_areas)
@@ -617,6 +621,7 @@ class JsonDataset(object):
         entry['visible_rate'] = np.append(entry['visible_rate'], visible_rate)
         entry['poses'] = np.append(entry['poses'], poses)
         entry['car_cat_classes'] = np.append(entry['car_cat_classes'], car_cat_classes)
+        entry['quaternions'] = np.append(entry['quaternions'], quaternions)
 
     def _add_gt_from_cache(self, roidb, cache_filepath):
         """Add ground truth annotation metadata from cached file."""
