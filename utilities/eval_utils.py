@@ -51,6 +51,34 @@ def pose_similarity(dt, gt, shape_sim_mat):
     return sims_shape, dis_trans, dis_rot
 
 
+def shape_sim(car_cls_prop, shape_sim_mat):
+    """
+
+    :param car_cls_prop: N * N_car_classes (34 or 79)
+    :param shape_sim_mat: N * N_car_classes (34 or 79)
+    :return:
+    """
+    shape_sim = car_cls_prop * shape_sim_mat
+    return shape_sim.sum(axis=1).mean()
+
+
+def rot_sim(dt_car_rot, gt_car_rot):
+    q1 = dt_car_rot / np.linalg.norm(dt_car_rot, axis=1)[:, None]
+    q2 = gt_car_rot / np.linalg.norm(gt_car_rot, axis=1)[:, None]
+
+    diff = abs(np.sum(q1*q2, axis=1))
+    dis_rot = 2 * np.arccos(diff) * 180 / np.pi
+    return dis_rot.mean()
+
+
+def trans_sim(dt_car_trans, gt_car_trans, mean, std):
+    # translation similarity
+    dt_car_trans = dt_car_trans * std + mean
+    gt_car_trans = gt_car_trans * std + mean
+    dis_trans = np.linalg.norm(dt_car_trans-gt_car_trans, axis=1)
+    return dis_trans.mean()
+
+
 def IOU(mask1, mask2):
     """ compute the intersection of union of two logical inputs
     Input:

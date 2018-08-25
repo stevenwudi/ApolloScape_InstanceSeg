@@ -102,6 +102,28 @@ class TrainingStats(object):
             metric = metric.mean(dim=0, keepdim=True)
             self.smoothed_metrics[k].AddValue(metric.data[0])
 
+    def UpdateIterStats_car_3d(self, model_out):
+        """Update tracked iteration statistics. for car 3d"""
+        # Following code is saved for compatability of train_net.py and iter_size==1
+        total_loss = 0
+        loss_names = ['loss_car_cls', 'loss_rot', 'loss_trans']
+        for name in loss_names:
+            loss = model_out['losses'][name]
+            assert loss.shape[0] == cfg.NUM_GPUS
+            loss = loss.mean(dim=0, keepdim=True)
+            total_loss += loss
+            loss_data = loss.data[0]
+            model_out['losses'][name] = loss
+            self.smoothed_losses[name].AddValue(loss_data)
+
+        model_out['total_loss'] = total_loss  # Add the total loss for back propagation
+        self.smoothed_total_loss.AddValue(total_loss.data[0])
+
+        for k, metric in model_out['metrics'].items():
+            metric = metric.mean(dim=0, keepdim=True)
+            self.smoothed_metrics[k].AddValue(metric.data[0])
+
+
     def _UpdateIterStats_inner(self, model_out, inner_iter):
         """Update tracked iteration statistics for the case of iter_size > 1"""
         assert inner_iter < self.misc_args.iter_size
@@ -172,11 +194,11 @@ class TrainingStats(object):
             setattr(self, attr_name, [])
         return mean_val
 
-    def LogIterStats(self, cur_iter, lr):
+    def LogIterStats(self, cur_iter, lr, warmup_factor_trans):
         """Log the tracked statistics."""
         if (cur_iter % self.LOG_PERIOD == 0 or
                 cur_iter == cfg.SOLVER.MAX_ITER - 1):
-            stats = self.GetStats(cur_iter, lr)
+            stats = self.GetStats(cur_iter, lr, warmup_factor_trans)
             log_stats(stats, self.misc_args)
             if self.tblogger:
                 self.tb_log_stats(stats, cur_iter)
@@ -191,7 +213,7 @@ class TrainingStats(object):
                 else:
                     self.tblogger.add_scalar(k, v, cur_iter)
 
-    def GetStats(self, cur_iter, lr):
+    def GetStats(self, cur_iter, lr, warmup_factor_trans):
         eta_seconds = self.iter_timer.average_time * (
             cfg.SOLVER.MAX_ITER - cur_iter
         )
@@ -202,6 +224,7 @@ class TrainingStats(object):
             eta=eta,
             loss=self.smoothed_total_loss.GetMedianValue(),
             lr=lr,
+            warmup_factor_trans=warmup_factor_trans,
         )
         stats['metrics'] = OrderedDict()
         for k in sorted(self.smoothed_metrics):
