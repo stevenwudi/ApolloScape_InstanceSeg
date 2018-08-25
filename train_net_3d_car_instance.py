@@ -1,7 +1,7 @@
 import argparse
 import os
-#os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import sys
 import pickle
@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')
-    parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train')
+    parser.add_argument('--dataset_dir', default='/media/SSD_1TB/ApolloScape/ECCV2018_apollo/train')
     # Optimization
     # These options has the highest prioity and can overwrite the values in config file or values set by set_cfgs. `None` means do not overwrite.
     parser.add_argument('--bs', dest='batch_size', help='Explicitly specify to overwrite the value comed from cfg_file.', type=int)
@@ -63,7 +63,7 @@ def parse_args():
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='./Outputs/e2e_mask_rcnn_R-101-FPN_2x/Aug13-13-18-43_N606-TITAN32_step/ckpt/model_step99999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/home/stevenwudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_3d_car_101_FPN/Aug23-23-19-14_N606-TITAN32_step/ckpt/model_step89999.pth', help='checkpoint path to load')
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 
@@ -313,6 +313,9 @@ def main():
                 elif method == 'linear':
                     alpha = step / cfg.SOLVER.WARM_UP_ITERS
                     warmup_factor = cfg.SOLVER.WARM_UP_FACTOR * (1 - alpha) + alpha
+                    # warmup_factor_trans = cfg.SOLVER.WARM_UP_FACTOR_TRANS * (1 - alpha) + alpha
+                    # warmup_factor_trans *= cfg.TRANS_HEAD.LOSS_BETA
+                    warmup_factor_trans = 1.0
                 else:
                     raise KeyError('Unknown SOLVER.WARM_UP_METHOD: {}'.format(method))
                 lr_new = cfg.SOLVER.BASE_LR * warmup_factor
@@ -348,14 +351,21 @@ def main():
                         input_data[key] = list(map(Variable, input_data[key]))
 
                 net_outputs = maskRCNN(**input_data)
-                training_stats.UpdateIterStats(net_outputs, inner_iter)
+                net_outputs['losses']['loss_trans'] *= warmup_factor_trans
+
+                # training_stats.UpdateIterStats(net_outputs, inner_iter)
+                training_stats.UpdateIterStats_car_3d(net_outputs)
                 #loss = net_outputs['total_loss']
-                loss = net_outputs['losses']['loss_car_cls'] + net_outputs['losses']['loss_rot']
+                # start training
+                # loss_car_cls: 2.233790, loss_rot: 0.296853, loss_trans: ~100
+                loss = net_outputs['losses']['loss_car_cls'] +\
+                       net_outputs['losses']['loss_rot'] +\
+                       net_outputs['losses']['loss_trans'] * warmup_factor_trans
                 loss.backward()
             optimizer.step()
             training_stats.IterToc()
 
-            training_stats.LogIterStats(step, lr)
+            training_stats.LogIterStats(step, lr, warmup_factor_trans)
 
             if (step + 1) % CHECKPOINT_PERIOD == 0:
                 save_ckpt(output_dir, args, step, train_size, maskRCNN, optimizer)
