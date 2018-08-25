@@ -133,6 +133,9 @@ class roi_car_cls_rot_head(nn.Module):
         return x
 
 
+# ---------------------------------------------------------------------------- #
+# TRANS heads
+# ---------------------------------------------------------------------------- #
 def bbox_transform_pytorch(rois, deltas, weights=(1.0, 1.0, 1.0, 1.0)):
     """Forward transform that maps proposal boxes to predicted ground-truth
     boxes using bounding-box regression deltas. See bbox_transform_inv for a
@@ -142,7 +145,7 @@ def bbox_transform_pytorch(rois, deltas, weights=(1.0, 1.0, 1.0, 1.0)):
 
     device_id = deltas.get_device()
 
-    boxes = Variable(torch.from_numpy(rois.astype('float32'))).cuda(device_id)
+    boxes = Variable(torch.from_numpy(rois[:, 1:].astype('float32'))).cuda(device_id)
     weights = Variable(torch.from_numpy(np.array(weights).astype('float32'))).cuda(device_id)
 
     widths = boxes[:, 2] - boxes[:, 0] + 1.0
@@ -169,25 +172,40 @@ def bbox_transform_pytorch(rois, deltas, weights=(1.0, 1.0, 1.0, 1.0)):
 
     pred_boxes = torch.zeros(deltas.shape, dtype=deltas.dtype)
     # x1
-    pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
+    # pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
+    # # y1
+    # pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
+    # # x2 (note: "- 1" is correct; don't be fooled by the asymmetry)
+    # pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
+    # # y2 (note: "- 1" is correct; don't be fooled by the asymmetry)
+    # pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
+
+    # # x1
+    pred_boxes[:, 0::4] = pred_ctr_x
     # y1
-    pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
-    # x2 (note: "- 1" is correct; don't be fooled by the asymmetry)
-    pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
-    # y2 (note: "- 1" is correct; don't be fooled by the asymmetry)
-    pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
+    pred_boxes[:, 1::4] = pred_ctr_y
+    # w (note: "- 1" is correct; don't be fooled by the asymmetry)
+    pred_boxes[:, 2::4] = pred_w
+    # h (note: "- 1" is correct; don't be fooled by the asymmetry)
+    pred_boxes[:, 3::4] = pred_h
 
     # Normalise box: NOT DONE properly yet! Hard coded
-    pred_boxes[:, ::2] /= 3384
-    pred_boxes[:, 1::2] /= 2710
+    im_shape = (2710, 3384)
+    car_shape = (100, 100)
+    pred_boxes[:, 0::4] -= (im_shape[0]/2)
+    pred_boxes[:, 0::4] /= im_shape[0]
+    pred_boxes[:, 1::4] -= (im_shape[1]/2)
+    pred_boxes[:, 1::4] /= im_shape[1]
+
+    pred_boxes[:, 2::4] -= (car_shape[0]/2)
+    pred_boxes[:, 2::4] /= car_shape[0]
+    pred_boxes[:, 3::4] -= (car_shape[1]/2)
+    pred_boxes[:, 3::4] /= car_shape[1]
 
     pred_boxes = pred_boxes.cuda(device_id)
     return pred_boxes
 
 
-# ---------------------------------------------------------------------------- #
-# TRANS heads
-# ---------------------------------------------------------------------------- #
 class bbox_2mlp_head(nn.Module):
     """Add a ReLU MLP with two hidden layers."""
     def __init__(self, dim_in):
