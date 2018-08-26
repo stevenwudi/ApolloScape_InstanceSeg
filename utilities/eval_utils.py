@@ -73,9 +73,11 @@ def rot_sim(dt_car_rot, gt_car_rot):
 
 def trans_sim(dt_car_trans, gt_car_trans, mean, std):
     # translation similarity
-    dt_car_trans = dt_car_trans * std + mean
-    gt_car_trans = gt_car_trans * std + mean
-    dis_trans = np.linalg.norm(dt_car_trans-gt_car_trans, axis=1)
+    mean = np.array(mean)
+    std = np.array(std)
+    dt_car_trans_world = dt_car_trans * std + mean
+    gt_car_trans_world = gt_car_trans * std + mean
+    dis_trans = np.linalg.norm(dt_car_trans_world-gt_car_trans_world, axis=1)
     return dis_trans.mean()
 
 

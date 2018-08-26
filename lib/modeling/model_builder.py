@@ -152,6 +152,8 @@ class Generalized_RCNN(nn.Module):
         if cfg.TRAIN.FREEZE_FPN:
             for p in self.Box_Head.parameters():
                 p.requires_grad = False
+            for p in self.Box_Outs.parameters():
+                p.requires_grad = False
 
     def forward(self, data, im_info, roidb=None, **rpn_kwargs):
         if cfg.PYTORCH_VERSION_LESS_THAN_040:
