@@ -64,6 +64,7 @@ def parse_args():
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
     parser.add_argument('--load_ckpt', default='/home/stevenwudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_3d_car_101_FPN/Aug23-23-19-14_N606-TITAN32_step/ckpt/model_step89999.pth', help='checkpoint path to load')
+
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 
@@ -360,7 +361,7 @@ def main():
                 # loss_car_cls: 2.233790, loss_rot: 0.296853, loss_trans: ~100
                 loss = net_outputs['losses']['loss_car_cls'] +\
                        net_outputs['losses']['loss_rot'] +\
-                       net_outputs['losses']['loss_trans'] * warmup_factor_trans
+                       net_outputs['losses']['loss_trans']
                 loss.backward()
             optimizer.step()
             training_stats.IterToc()
