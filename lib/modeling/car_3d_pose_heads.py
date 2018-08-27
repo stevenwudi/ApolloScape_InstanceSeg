@@ -136,7 +136,7 @@ class roi_car_cls_rot_head(nn.Module):
 # ---------------------------------------------------------------------------- #
 # TRANS heads
 # ---------------------------------------------------------------------------- #
-def bbox_transform_pytorch(rois, deltas, weights=(1.0, 1.0, 1.0, 1.0)):
+def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0), ):
     """Forward transform that maps proposal boxes to predicted ground-truth
     boxes using bounding-box regression deltas. See bbox_transform_inv for a
     description of the weights argument.
@@ -190,12 +190,13 @@ def bbox_transform_pytorch(rois, deltas, weights=(1.0, 1.0, 1.0, 1.0)):
     pred_boxes[:, 3::4] = pred_h
 
     # Normalise box: NOT DONE properly yet! Hard coded
-    im_shape = (2710, 3384)
-    car_shape = (100, 100)
-    pred_boxes[:, 0::4] -= (im_shape[0]/2)
-    pred_boxes[:, 0::4] /= im_shape[0]
-    pred_boxes[:, 1::4] -= (im_shape[1]/2)
-    pred_boxes[:, 1::4] /= im_shape[1]
+
+    im_shape = im_info[0][:2]
+    car_shape = (120, 120)
+    pred_boxes[:, 0::4] -= (im_shape[1]/2)
+    pred_boxes[:, 0::4] /= im_shape[1]
+    pred_boxes[:, 1::4] -= (im_shape[0]/2)
+    pred_boxes[:, 1::4] /= im_shape[0]
 
     pred_boxes[:, 2::4] -= (car_shape[0]/2)
     pred_boxes[:, 2::4] /= car_shape[0]
@@ -280,3 +281,24 @@ def car_trans_losses(trans_pred, label_trans):
         loss_trans = torch.abs(trans_pred - label_trans)
     loss_trans = loss_trans.view(-1).sum(0) / N
     return loss_trans
+
+
+def infer_car_3d_translation(pred_boxes_car, car_model, quaternions_gt, quaternions_dt, rpn_ret):
+    from matplotlib import pyplot as plt
+    import cv2
+    image_file = '/media/SSD_1TB/ApolloScape/ECCV2018_apollo/train/images/180310_025828603_Camera_5.jpg'
+    image = cv2.imread(image_file, cv2.IMREAD_UNCHANGED)[:, :, ::-1]
+
+    intrinsic = np.array(
+                [2304.54786556982, 2305.875668062,
+                 1686.23787612802, 1354.98486439791]),
+    image, intrinsic_mat = self.rescale(image, intrinsic)
+    im_shape = image.shape
+    mask_all = np.zeros(im_shape)
+
+    for i, car_pose in enumerate(car_poses):
+        car_name = car_models.car_id2name[car_pose['car_id']].name
+        mask = self.render_car(car_pose['pose'], car_name, im_shape)
+        mask_all += mask
+
+    return image

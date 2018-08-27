@@ -15,12 +15,14 @@ import modeling.rpn_heads as rpn_heads
 import modeling.fast_rcnn_heads as fast_rcnn_heads
 import modeling.mask_rcnn_heads as mask_rcnn_heads
 import modeling.car_3d_pose_heads as car_3d_pose_heads
+from modeling.car_3d_pose_heads import infer_car_3d_translation
 import modeling.keypoint_rcnn_heads as keypoint_rcnn_heads
 import utils.blob as blob_utils
 import utils.net as net_utils
 import utils.resnet_weights_helper as resnet_utils
 import numpy as np
 from utilities.eval_utils import shape_sim, rot_sim, trans_sim
+from utils.boxes import bbox_transform
 logger = logging.getLogger(__name__)
 
 
@@ -220,21 +222,8 @@ class Generalized_RCNN(nn.Module):
             return_dict['losses']['loss_bbox'] = loss_bbox
             return_dict['metrics']['accuracy_cls'] = accuracy_cls
 
-            if cfg.MODEL.TRANS_HEAD_ON:
-                # We first get the bounding box
-                pred_boxes = car_3d_pose_heads.bbox_transform_pytorch(rpn_ret['rois'], bbox_pred, cfg.MODEL.BBOX_REG_WEIGHTS)
-                # we only use the car cls
-                car_cls_int = 4
-                car_idx = np.where(rpn_ret['labels_int32'] == car_cls_int)
-                pred_boxes_car = pred_boxes[car_idx, 4*car_cls_int:4*(car_cls_int+1)].squeeze(dim=0)
-                # Build translation head heres from the bounding box
-                car_trans_feat = self.car_trans_Head(pred_boxes_car)
-                car_trans_pred = self.car_trans_Outs(car_trans_feat)
-
-                label_trans = rpn_ret['car_trans'][car_idx]
-                loss_trans = car_3d_pose_heads.car_trans_losses(car_trans_pred, label_trans)
-                return_dict['losses']['loss_trans'] = loss_trans
-
+            # we only use the car cls
+            car_cls_int = 4
             if cfg.MODEL.CAR_CLS_HEAD_ON:
                 if getattr(self.car_cls_Head, 'SHARE_RES5', False):
                     # TODO: add thos shared_res5 module
@@ -245,8 +234,7 @@ class Generalized_RCNN(nn.Module):
                     # car classification loss, we only fine tune the labelled cars
 
                 # we only use the car cls
-                car_idx = np.where(rpn_ret['labels_int32'] == 4)
-
+                car_idx = np.where(rpn_ret['labels_int32'] == car_cls_int)
                 if len(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT):
                     ce_weight = np.array(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT)
                 else:
@@ -271,9 +259,35 @@ class Generalized_RCNN(nn.Module):
                 return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls
                 return_dict['metrics']['shape_sim'] = shape_sim(car_cls[car_idx].data.cpu().numpy(), shape_sim_mat)
                 return_dict['metrics']['rot_sim'] = rot_sim(rot_pred[car_idx].data.cpu().numpy(), rpn_ret['quaternions'][car_idx])
+
+            if cfg.MODEL.TRANS_HEAD_ON:
+                pred_boxes = car_3d_pose_heads.bbox_transform_pytorch(rpn_ret['rois'], bbox_pred, im_info,
+                                                                      cfg.MODEL.BBOX_REG_WEIGHTS)
+                car_idx = np.where(rpn_ret['labels_int32'] == car_cls_int)
+
+                pred_boxes_car = pred_boxes[car_idx, 4*car_cls_int:4*(car_cls_int+1)].squeeze(dim=0)
+
+                # Build translation head heres from the bounding box
+                car_trans_feat = self.car_trans_Head(pred_boxes_car)
+                car_trans_pred = self.car_trans_Outs(car_trans_feat)
+
+                label_trans = rpn_ret['car_trans'][car_idx]
+                loss_trans = car_3d_pose_heads.car_trans_losses(car_trans_pred, label_trans)
+                return_dict['losses']['loss_trans'] = loss_trans
                 return_dict['metrics']['trans_sim'] = trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
                                                                 cfg.TRANS_HEAD.TRANS_MEAN,
                                                                 cfg.TRANS_HEAD.TRANS_STD)
+            else:
+                box_deltas = bbox_pred.data.cpu().numpy().squeeze()
+                pred_boxes = bbox_transform(rpn_ret['rois'], box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+                pred_boxes_car = pred_boxes[car_idx, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(axis=0)
+
+                #### TEST CODE BELOW####
+                car_model = rpn_ret['car_cls_labels_int32'][car_idx][0]
+                quaternions_gt = rpn_ret['quaternions'][car_idx][0]
+                quaternions_dt = rot_pred[car_idx].data.cpu().numpy()[0]
+
+                infer_car_3d_translation(pred_boxes_car, car_model, quaternions_gt, quaternions_dt, rpn_ret)
 
             if cfg.MODEL.MASK_TRAIN_ON:
                 if getattr(self.Mask_Head, 'SHARE_RES5', False):

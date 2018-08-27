@@ -106,7 +106,11 @@ class TrainingStats(object):
         """Update tracked iteration statistics. for car 3d"""
         # Following code is saved for compatability of train_net.py and iter_size==1
         total_loss = 0
-        loss_names = ['loss_car_cls', 'loss_rot', 'loss_trans']
+        loss_names = ['loss_car_cls', 'loss_rot']
+
+        if cfg.MODEL.TRANS_HEAD_ON:
+            loss_names = ['loss_car_cls', 'loss_rot', 'loss_trans']
+
         for name in loss_names:
             loss = model_out['losses'][name]
             assert loss.shape[0] == cfg.NUM_GPUS
@@ -122,7 +126,6 @@ class TrainingStats(object):
         for k, metric in model_out['metrics'].items():
             metric = metric.mean(dim=0, keepdim=True)
             self.smoothed_metrics[k].AddValue(metric.data[0])
-
 
     def _UpdateIterStats_inner(self, model_out, inner_iter):
         """Update tracked iteration statistics for the case of iter_size > 1"""
