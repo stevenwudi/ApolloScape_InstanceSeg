@@ -208,9 +208,7 @@ class JsonDataset(object):
 
                 logger.debug('_add_gt_annotations took {:.3f}s'.format(self.debug_timer.toc(average=False)))
 
-                if list_flag is not 'train':
-                    cache_filepath = cache_filepath[:-4] + '_' + list_flag + cache_filepath[-4:]
-                elif cfg.TRAIN.USE_FLIPPED:
+                if cfg.TRAIN.USE_FLIPPED:
                     logger.info('Appending horizontally-flipped training examples...')
                     extend_with_flipped_entries(roidb)
                 logger.info('Loaded dataset: {:s}'.format(self.name + '_' + list_flag))
