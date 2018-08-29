@@ -1,4 +1,4 @@
-OUTPUT_DIR: '/media/SSD_1TB/ApolloScape/ApolloScape_InstanceSeg'
+OUTPUT_DIR: '/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg'  #'/media/SSD_1TB/ApolloScape/ApolloScape_InstanceSeg'
 
 MODEL:
   TYPE: generalized_rcnn

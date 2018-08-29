@@ -92,12 +92,12 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
         cls_segms = None
 
     # Further head for 3d car pose estimation
-    if cfg.MODEL.CAR_CLS_HEAD and boxes.shape[0] > 0:
+    if cfg.MODEL.CAR_CLS_HEAD_ON and boxes.shape[0] > 0:
         timers['im_car_cls'].tic()
         if cfg.TEST.CAR_CLS_AUG.ENABLED:
             raise Exception('Not implemented')
         else:
-            car_cls = im_car_cls(model, im_scale, boxes, blob_conv)
+            car_cls_score, car_cls, rot_pred = im_car_cls(model, im_scale, boxes, blob_conv)
         timers['im_detect_mask'].toc()
 
         # timers['misc_car_cls'].tic()
@@ -105,6 +105,20 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
         # timers['misc_car_cls'].toc()
     else:
         car_cls = None
+        rot_pred = None
+
+    # Trans head for 3d car translation (pose) estimation:
+
+    if cfg.MODEL.TRANS_HEAD_ON and boxes.shape[0] > 0:
+        timers['im_car_trans'].tic()
+        if cfg.TEST.CAR_CLS_AUG.ENABLED:
+            raise Exception('Not implemented')
+        else:
+            device_id = blob_conv[0].get_device()
+            car_trans_pred = im_car_trans(model, im_scale, boxes, device_id)
+        timers['im_car_trans'].toc()
+    else:
+        car_trans_pred = None
 
     if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
         timers['im_detect_keypoints'].tic()
@@ -120,7 +134,7 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
     else:
         cls_keyps = None
 
-    return cls_boxes, cls_segms, cls_keyps, car_cls
+    return cls_boxes, cls_segms, cls_keyps, car_cls, rot_pred, car_trans_pred
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
@@ -373,7 +387,7 @@ def im_detect_bbox_aspect_ratio(model, im, aspect_ratio, box_proposals=None, hfl
 
 
 def im_car_cls(model, im_scale, boxes, blob_conv):
-    """Infer car class.
+    """Infer car class with translation.
     This function must be called after im_detect_bbox as it assumes that the workspace is already populated
     with the necessary blobs.
 
@@ -394,10 +408,33 @@ def im_car_cls(model, im_scale, boxes, blob_conv):
     if cfg.FPN.MULTILEVEL_ROIS:
         _add_multilevel_rois_for_test(inputs, 'rois')
 
-    pred_car_cls = model.module.car_cls_net(blob_conv, inputs)
-    pred_car_cls = pred_car_cls.data.cpu().numpy().squeeze()
+    car_cls_score, car_cls, rot_pred = model.module.car_cls_net(blob_conv, inputs)
+    car_cls_score = car_cls_score.data.cpu().numpy().squeeze()
+    car_cls = car_cls.data.cpu().numpy().squeeze()
+    rot_pred = rot_pred.data.cpu().numpy().squeeze()
 
-    return pred_car_cls
+    return car_cls_score, car_cls, rot_pred
+
+
+def im_car_trans(model, im_scale, boxes, device_id):
+    """Infer car translation via boundingbox from faster-rcnn head.
+    This function must be called after im_detect_bbox as it assumes that the workspace is already populated
+    with the necessary blobs.
+
+    Arguments:
+        model (DetectionModelHelper): the detection model to use
+        im_scale (list): image blob scales as returned by im_detect_bbox
+        boxes (ndarray): R x 4 array of bounding box detections (e.g., as
+            returned by im_detect_bbox)
+
+    Returns:
+        pred_masks (ndarray): R x 1 array of car class vector output by the network
+    """
+
+    car_trans_pred = model.module.car_trans_net(boxes, im_scale, device_id)
+    car_trans_pred = car_trans_pred.data.cpu().numpy().squeeze()
+
+    return car_trans_pred
 
 
 def im_detect_mask(model, im_scale, boxes, blob_conv):

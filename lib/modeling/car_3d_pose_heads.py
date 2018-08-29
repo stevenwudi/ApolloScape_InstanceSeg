@@ -207,6 +207,47 @@ def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0), 
     return pred_boxes
 
 
+def bbox_transform_pytorch_out(boxes, im_scale, device_id):
+    """Forward transform that maps proposal boxes to predicted ground-truth
+    boxes using bounding-box regression deltas. See bbox_transform_inv for a
+    description of the weights argument.
+    This is a pytorch head
+    """
+
+    pred_w = boxes[:, 2] - boxes[:, 0] + 1.0
+    pred_h = boxes[:, 3] - boxes[:, 1] + 1.0
+    pred_ctr_x = boxes[:, 0] + 0.5 * pred_w
+    pred_ctr_y = boxes[:, 1] + 0.5 * pred_h
+
+    # Prevent sending too large values into np.exp()
+    pred_boxes = np.zeros(boxes.shape, dtype=boxes.dtype)
+    # # x1
+    pred_boxes[:, 0::4] = pred_ctr_x[:, None]
+    # y1
+    pred_boxes[:, 1::4] = pred_ctr_y[:, None]
+    # w (note: "- 1" is correct; don't be fooled by the asymmetry)
+    pred_boxes[:, 2::4] = pred_w[:, None]
+    # h (note: "- 1" is correct; don't be fooled by the asymmetry)
+    pred_boxes[:, 3::4] = pred_h[:, None]
+
+    # Normalise box: NOT DONE properly yet! Hard coded
+    im_shape_max = np.array([2710, 3384])
+    im_shape = im_scale * im_shape_max
+    car_shape = (120, 120)
+    pred_boxes[:, 0::4] -= (im_shape[1]/2)
+    pred_boxes[:, 0::4] /= im_shape[1]
+    pred_boxes[:, 1::4] -= (im_shape[0]/2)
+    pred_boxes[:, 1::4] /= im_shape[0]
+
+    pred_boxes[:, 2::4] -= (car_shape[0]/2)
+    pred_boxes[:, 2::4] /= car_shape[0]
+    pred_boxes[:, 3::4] -= (car_shape[1]/2)
+    pred_boxes[:, 3::4] /= car_shape[1]
+
+    pred_boxes = Variable(torch.from_numpy(pred_boxes.astype('float32'))).cuda(device_id)
+
+    return pred_boxes
+
 class bbox_2mlp_head(nn.Module):
     """Add a ReLU MLP with two hidden layers."""
     def __init__(self, dim_in):

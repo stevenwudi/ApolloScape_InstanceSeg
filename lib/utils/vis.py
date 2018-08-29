@@ -37,6 +37,8 @@ from utils.colormap import colormap
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 
+from utilities.utils import quaternion_to_euler_angle
+from utilities.utils import euler_angles_to_rotation_matrix
 plt.rcParams['pdf.fonttype'] = 42  # For editing in Adobe Illustrator
 
 _GRAY = (218, 227, 218)
@@ -331,13 +333,15 @@ def vis_one_image_cvpr2018_wad(
                     alpha=0.5)
                 ax.add_patch(polygon)
 
-        output_name = os.path.basename(im_name) + '.' + ext
-        fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
-        plt.close('all')
+    output_name = os.path.basename(im_name) + '.' + ext
+    fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
+    plt.close('all')
 
 
 def vis_one_image_eccv2018_car_3d(
-        im, im_name, output_dir, boxes, car_cls_prob=None, segms=None, keypoints=None, thresh=0.9,
+        im, im_name, output_dir, boxes,
+        car_cls_prob=None, rot_pred=None, trans_pred=None, car_models=None, intrinsic=None,
+        segms=None, keypoints=None, thresh=0.9,
         dpi=200, box_alpha=0.0, dataset=None, ext='jpg'):
     """Visual debugging of detections."""
     if not os.path.exists(output_dir):
@@ -379,10 +383,14 @@ def vis_one_image_eccv2018_car_3d(
 
         # car_cls
         car_cls_i = car_cls[i]
+        rot_pred_i = rot_pred[i]
+        trans_pred_i = trans_pred[i]
         car_model_i = dataset.unique_car_models[car_cls_i]
         car_model_name_i = dataset.car_id2name[car_model_i]
-        if class_string=='car':
-            print("%s: %.4f, car model: %s" % (class_string, score, car_model_name_i.name))
+        if class_string == 'car':
+            print("%s: %.4f, car model: %s" % (class_string, score, car_model_name_i.name) +
+                  '. quaternion: ' + ", ".join(['{:.3f}'.format(i) for i in rot_pred_i]) +
+                  '. Trans: ' + ", ".join(['{:.3f}'.format(i) for i in trans_pred_i]))
         else:
             print(class_string, score)
         # show box (off by default, box_alpha=0.0)
@@ -392,14 +400,33 @@ def vis_one_image_eccv2018_car_3d(
                                    fill=False, edgecolor='g',
                                    linewidth=0.5, alpha=box_alpha))
 
-        if class_string=='car':
+        if class_string == 'car':
+            #vis_string = car_model_name_i.name + '. quaternion: ' + ", ".join(['{:.3f}'.format(i) for i in rot_pred_i]) + '. Trans: ' + ", ".join(['{:.3f}'.format(i) for i in trans_pred_i])
+            vis_string = car_model_name_i.name
             ax.text(bbox[0], bbox[1] - 2,
-                    car_model_name_i.name,
+                    vis_string,
                     fontsize=10,
                     family='serif',
                     bbox=dict(facecolor='g', alpha=0.4, pad=0, edgecolor='none'),
                     color='white')
 
+            # Show predicted pos mesh here:
+            if rot_pred is not None and rot_pred is not None:
+                euler_angle = quaternion_to_euler_angle(rot_pred_i)
+                pose = np.concatenate((euler_angle, trans_pred_i))
+                car_name = car_model_name_i.name
+                car = car_models[car_name]
+                pose = np.array(pose)
+                # project 3D points to 2d image plane
+                rmat = euler_angles_to_rotation_matrix(pose[:3])
+                rvect, _ = cv2.Rodrigues(rmat)
+                imgpts, jac = cv2.projectPoints(np.float32(car['vertices']), rvect, pose[3:], intrinsic, distCoeffs=None)
+                triangles = np.array(car['faces']-1).astype('int64')
+                x = np.squeeze(imgpts[:, :, 1])
+                y = np.squeeze(imgpts[:, :, 0])
+                triangles = triangles
+                color_mask = color_list[mask_color_id % len(color_list), 0:3]
+                ax.triplot(y, x, triangles, alpha=0.8, linewidth=1.2, color=color_mask)
         # show mask
         if segms is not None and len(segms) > i:
             img = np.ones(im.shape)
@@ -420,9 +447,29 @@ def vis_one_image_eccv2018_car_3d(
                     c.reshape((-1, 2)),
                     fill=True, facecolor=color_mask,
                     edgecolor='w', linewidth=1.2,
-                    alpha=0.5)
+                    alpha=0.2)
                 ax.add_patch(polygon)
 
-        output_name = os.path.basename(im_name) + '.' + ext
-        fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
-        plt.close('all')
+    output_name = os.path.basename(im_name) + '.' + ext
+    fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
+    plt.close('all')
+
+
+def render_car_cv2(pose, car_name, car_models, intrinsic, mesh_color, ax):
+    """Render a car instance given pose and car_name
+    """
+    car = car_models[car_name]
+    pose = np.array(pose)
+    # project 3D points to 2d image plane
+    rmat = euler_angles_to_rotation_matrix(pose[:3])
+    rvect, _ = cv2.Rodrigues(rmat)
+    imgpts, jac = cv2.projectPoints(np.float32(car['vertices']), rvect, pose[3:], intrinsic, distCoeffs=None)
+
+    for face in car['faces'] - 1:
+        pts = np.array([[imgpts[idx, 0, 0], imgpts[idx, 0, 1]] for idx in face], np.int32)
+        polygon = Polygon(
+            pts.reshape((-1, 2)),
+            fill=True, facecolor=mesh_color,
+            edgecolor='w', linewidth=1.2,
+            alpha=0.5)
+        ax.add_patch(polygon)

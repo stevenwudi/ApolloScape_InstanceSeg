@@ -137,7 +137,7 @@ class Car3D(WAD_CVPR2018):
             self.car_models[model.name]['vertices'][:, [0, 1]] *= -1
         return self.car_models
 
-    def get_intrinsic_mat(self, image_name):
+    def get_intrinsic_mat(self):
         #intrinsic = self.dataset.get_intrinsic(image_name)
         # Intrinsic should always use camera 5
         intrinsic = self.dataset.get_intrinsic('Camera_5')

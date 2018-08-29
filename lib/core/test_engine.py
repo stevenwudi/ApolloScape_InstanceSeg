@@ -311,8 +311,7 @@ def test_net(
                 box_proposals = None
 
             im = cv2.imread(entry['image'])
-            cls_boxes_i, cls_segms_i, cls_keyps_i, car_cls_i = im_detect_all(model, im, box_proposals, timers)
-
+            cls_boxes_i, cls_segms_i, cls_keyps_i, car_cls_i, rot_pred_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers)
             extend_results(i, all_boxes, cls_boxes_i)
             if cls_segms_i is not None:
                 extend_results(i, all_segms, cls_segms_i)
@@ -351,6 +350,10 @@ def test_net(
                     os.path.join(output_dir, 'vis'),
                     boxes=cls_boxes_i,
                     car_cls_prob=car_cls_i,
+                    rot_pred=rot_pred_i,
+                    trans_pred=trans_pred_i,
+                    car_models=dataset.Car3D.car_models,
+                    intrinsic=dataset.Car3D.get_intrinsic_mat(),
                     segms=cls_segms_i,
                     keypoints=cls_keyps_i,
                     thresh=0.9,
@@ -371,7 +374,7 @@ def test_net(
     return results
 
 
-def initialize_model_from_cfg(args, gpu_id=0):
+def initialize_model_from_cfg(args):
     """Initialize a model from the global cfg. Loads test-time weights and
     set to evaluation mode.
     """
