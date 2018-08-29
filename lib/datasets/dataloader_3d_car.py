@@ -112,7 +112,13 @@ class Car3D(WAD_CVPR2018):
         if with_valid:
             valid_list_all = [line.rstrip('\n')[:-4] for line in open(os.path.join(self.data_dir, 'split', 'val.txt'))]
 
-        self.train_list_all = train_list_all + valid_list_all
+        # The Following list of images are noisy images that should be deleted:
+        train_list_delete = [line.rstrip('\n')[:-4] for line in open(os.path.join(self.data_dir, 'split',  'Mesh_overlay_train_error _delete.txt'))]
+        val_list_delete = [line.rstrip('\n')[:-4] for line in open(os.path.join(self.data_dir, 'split',  'Mesh_overlay_val_error_delete.txt'))]
+        noisy_list = train_list_delete + val_list_delete
+        print("Train delete %d images, val delete %d images." % (len(train_list_delete), len(val_list_delete)))
+
+        self.train_list_all = [x for x in train_list_all + valid_list_all if x not in noisy_list]
         return self.train_list_all
 
     def load_car_models(self):
