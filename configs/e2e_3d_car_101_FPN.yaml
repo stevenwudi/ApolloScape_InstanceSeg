@@ -1,3 +1,5 @@
+OUTPUT_DIR: '/media/SSD_1TB/ApolloScape/ApolloScape_InstanceSeg'
+
 MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.fpn_ResNet101_conv5_body
@@ -5,8 +7,7 @@ MODEL:
   MASK_ON: True
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
-  #ROT_HEAD_ON: True
-  TRANS_HEAD: False
+  TRANS_HEAD_ON: True
 
 RESNETS:
   IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'
@@ -18,6 +19,8 @@ SOLVER:
   GAMMA: 0.1
   MAX_ITER:  90000
   STEPS: [0, 20000, 40000]
+  WARM_UP_ITERS: 500
+  WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
 FPN:
   FPN_ON: True
   FPN_LOSS_SHOW: False
@@ -37,6 +40,16 @@ CAR_CLS:
   CLS_SPECIFIC_ROT: False # Use class specific mask predictions if True (otherwise use class agnostic rot predictions)
   SIM_MAT_LOSS: True
 
+TRANS_HEAD:
+  TRANS_HEAD: car_3d_pose_heads.bbox_2mlp_head
+  INPUT_DIM: 4
+  OUTPUT_DIM: 3
+  MLP_HEAD_DIM: 100
+  TRANS_MEAN: (-3.756, 9.9432, 54.044)
+  TRANS_STD: (15.005, 7.0902, 41.8559)
+  LOSS: 'MSE'   # ['MSE', 'L1']
+  LOSS_BETA: 10.0
+  NORMALISE: False
 #ROT_HEAD:
 #  ROI_ROT_HEAD: 3d_pose_head.roi_car_cls_rot_head
 #  ROI_XFORM_METHOD: RoIAlign
@@ -58,8 +71,8 @@ TRAIN:
   #SCALES: (800,)
 #  SCALES: (1600, 2000)  # If it's 0, means that we don't resize it
 #  MAX_SIZE: 2000
-  SCALES: (2000, 3384)  # If it's 0, means that we don't resize it
-  MAX_SIZE: 3000
+  SCALES: (2000, 2710)  # 2710 is the max size for shortest side. If it's 0, means that we don't resize it
+  MAX_SIZE: 3000 #3384  # max size for longest side
   RPN_PRE_NMS_TOP_N: 2000  # Per FPN level, 2000 default
   CE_FINETUNE_WIGHT: ( 1,  1.20,    6.4,         14.35,      1.   , 2.48,   1.53427976,    4.088)
   SNAPSHOT_ITERS: 400
@@ -76,7 +89,7 @@ TRAIN:
 TEST:
   SCORE_THRESH: 0.1
   SCALE: 0  # 2710
-  MAX_SIZE: 3384  # 3384
+  MAX_SIZE: 3000  # 3384
   NMS: 0.5
   RPN_PRE_NMS_TOP_N: 2000  # Per FPN level
   RPN_POST_NMS_TOP_N: 2000  # 1000 default

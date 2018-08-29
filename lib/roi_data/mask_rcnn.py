@@ -139,3 +139,26 @@ def add_car_cls_rcnn_blobs(blobs, roidb, fg_inds, sampled_labels):
     blobs['car_cls_labels_int32'] = labels_car_cls
     blobs['quaternions'] = quaternions
 
+
+def add_car_trans_rcnn_blobs(blobs, roidb, fg_inds, sampled_labels):
+    """Add Car classification specific blobs to the input blob dictionary."""
+
+    def normalise_pose(trans):
+        trans -= np.array(cfg.TRANS_HEAD.TRANS_MEAN)
+        trans /= np.array(cfg.TRANS_HEAD.TRANS_STD)
+        return trans
+
+    car_trans = np.ones((sampled_labels.shape[0], 3)) * (-100)
+
+    for i, ind in enumerate(fg_inds):
+        ind_temp = roidb['box_to_gt_ind_map'][ind]
+        if ind_temp == -1:
+            raise AssertionError("This is a background class")
+        else:
+            poses = roidb['poses'][ind_temp]
+            if cfg.TRANS_HEAD.NORMALISE:
+                car_trans[i] = normalise_pose(poses[3:])
+            else:
+                car_trans[i] = poses[3:]
+
+    blobs['car_trans'] = car_trans

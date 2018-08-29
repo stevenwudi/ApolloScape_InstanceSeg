@@ -49,8 +49,8 @@ def log_stats(stats, misc_args):
         lines = "[%s][%s][Step %d / %d]\n" % (
             misc_args.run_name, misc_args.cfg_filename, stats['iter'], cfg.SOLVER.MAX_ITER)
 
-    lines += "\t\tloss: %.6f, lr: %.6f time: %.6f, eta: %s\n" % (
-        stats['loss'], stats['lr'], stats['time'], stats['eta']
+    lines += "\t\tloss: %.6f, lr: %.6f, warmup_factor_trans: %.6f time: %.6f, eta: %s\n" % (
+        stats['loss'], stats['lr'], stats['warmup_factor_trans'], stats['time'], stats['eta']
     )
     if stats['metrics']:
         lines += "\t\t" + ", ".join("%s: %.6f" % (k, v) for k, v in stats['metrics'].items()) + "\n"

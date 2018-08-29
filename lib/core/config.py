@@ -457,6 +457,9 @@ __C.MODEL.MASK_TRAIN_ON = False
 # Indicates the model makes Pose car class predictions (as in Mask R-CNN for keypoints)
 __C.MODEL.CAR_CLS_HEAD_ON = False
 
+# Indicates the model makes 3d car translation predictions
+__C.MODEL.TRANS_HEAD_ON = False
+
 # Indicates the model makes Pose car class predictions (as in Mask R-CNN for keypoints)
 __C.MODEL.ROT_HEAD_ON = False
 
@@ -625,6 +628,7 @@ __C.SOLVER.WARM_UP_ITERS = 500
 # Start the warm up from SOLVER.BASE_LR * SOLVER.WARM_UP_FACTOR
 __C.SOLVER.WARM_UP_FACTOR = 1.0 / 3.0
 
+__C.SOLVER.WARM_UP_FACTOR_TRANS = 1.0 / 100.0
 # WARM_UP_METHOD can be either 'constant' or 'linear' (i.e., gradual)
 __C.SOLVER.WARM_UP_METHOD = 'linear'
 
@@ -799,6 +803,42 @@ __C.CAR_CLS.CLS_SPECIFIC_ROT = False
 
 # Using Similarity matrix to reduce the car classificatin penalty: we only need their shapes to be similar
 __C.CAR_CLS.SIM_MAT_LOSS = False
+
+
+# ---------------------------------------------------------------------------- #
+# CAR_TRANS options, for predicting the car pose translation (x,y,z)
+# ---------------------------------------------------------------------------- #
+
+__C.TRANS_HEAD = AttrDict()
+
+# The type of mlp head to use for translation regression
+# The string must match a function this is imported in modeling.model_builder
+# (e.g., 'car_3d_pose_heads.bbox_2mlp_head' to specify a two hidden layer MLP)
+__C.TRANS_HEAD.TRANS_HEAD = ''
+
+# INPUT DIM: bbox (x1, y1, x2, y2)
+__C.TRANS_HEAD.INPUT_DIM = 4
+
+# Translation output DIM
+__C.TRANS_HEAD.OUTPUT_DIM = 3
+
+# MLP hhidden head (100-100)
+__C.TRANS_HEAD.MLP_HEAD_DIM = 100
+
+# Translation Mean DIM
+__C.TRANS_HEAD.TRANS_MEAN = (-3.756, 9.9432, 54.044)
+
+# Translation output DIM
+__C.TRANS_HEAD.TRANS_STD = (15.005, 7.0902, 41.8559)
+
+# Translation output DIM
+__C.TRANS_HEAD.LOSS = 'MSE'   # ['MSE', 'L1']
+
+# Loss mulitplication coefficience
+__C.TRANS_HEAD.LOSS_BETA = 0.01
+
+# Whether to normalise the Tran input
+__C.TRANS_HEAD.NORMALISE = False
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)
 # ---------------------------------------------------------------------------- #

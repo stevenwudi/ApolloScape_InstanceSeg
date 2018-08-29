@@ -57,6 +57,9 @@ def get_fast_rcnn_blob_names(is_training=True):
         blob_names += ['car_cls_labels_int32']
         blob_names += ['quaternions']
 
+    if is_training and cfg.MODEL.TRANS_HEAD_ON:
+        blob_names += ['car_trans']
+
     if is_training and cfg.MODEL.MASK_ON:
         # 'mask_rois': RoIs sampled for training the mask prediction branch.
         # Shape is (#masks, 5) in format (batch_idx, x1, y1, x2, y2).
@@ -194,6 +197,10 @@ def _sample_rois(roidb, im_scale, batch_idx):
     # Optionally add CAR_CLS_HEAD blobs
     if cfg.MODEL.CAR_CLS_HEAD_ON:
         roi_data.mask_rcnn.add_car_cls_rcnn_blobs(blob_dict, roidb, fg_inds, sampled_labels)
+
+    # Optionallyadd CAR_TRANS blobs
+    if cfg.MODEL.TRANS_HEAD_ON:
+        roi_data.mask_rcnn.add_car_trans_rcnn_blobs(blob_dict, roidb, fg_inds, sampled_labels)
 
     # Optionally add Mask R-CNN blobs
     if cfg.MODEL.MASK_TRAIN_ON:
