@@ -26,7 +26,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
     parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--load_ckpt', default='./Outputs/e2e_3d_car_101_FPN/Aug20-23-26-26_N606-TITAN32_step/ckpt/model_step33454.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_3d_car_101_FPN/Aug23-23-19-14_N606-TITAN32_step/ckpt/model_step30855.pth', help='checkpoint path to load')
     parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train')
 
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
