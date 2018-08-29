@@ -6,6 +6,7 @@
 
 import numpy as np
 import utilities.utils as uts
+from core.config import cfg
 
 
 def pose_similarity(dt, gt, shape_sim_mat):
@@ -75,9 +76,10 @@ def trans_sim(dt_car_trans, gt_car_trans, mean, std):
     # translation similarity
     mean = np.array(mean)
     std = np.array(std)
-    dt_car_trans_world = dt_car_trans * std + mean
-    gt_car_trans_world = gt_car_trans * std + mean
-    dis_trans = np.linalg.norm(dt_car_trans_world-gt_car_trans_world, axis=1)
+    if cfg.TRANS_HEAD.NORMALISE:
+        dt_car_trans = dt_car_trans * std + mean
+        gt_car_trans = gt_car_trans * std + mean
+    dis_trans = np.linalg.norm(dt_car_trans-gt_car_trans, axis=1)
     return dis_trans.mean()
 
 

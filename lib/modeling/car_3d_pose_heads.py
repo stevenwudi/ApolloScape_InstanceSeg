@@ -248,7 +248,7 @@ class car_trans_outputs(nn.Module):
         self._init_weights()
 
     def _init_weights(self):
-        init.normal_(self.trans_pred.weight, std=0.001)
+        init.normal_(self.trans_pred.weight, std=0.1)
         init.constant_(self.trans_pred.bias, 0)
 
     def detectron_weight_mapping(self):

@@ -836,6 +836,9 @@ __C.TRANS_HEAD.LOSS = 'MSE'   # ['MSE', 'L1']
 
 # Loss mulitplication coefficience
 __C.TRANS_HEAD.LOSS_BETA = 0.01
+
+# Whether to normalise the Tran input
+__C.TRANS_HEAD.NORMALISE = False
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)
 # ---------------------------------------------------------------------------- #

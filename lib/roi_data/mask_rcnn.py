@@ -156,6 +156,9 @@ def add_car_trans_rcnn_blobs(blobs, roidb, fg_inds, sampled_labels):
             raise AssertionError("This is a background class")
         else:
             poses = roidb['poses'][ind_temp]
-            car_trans[i] = normalise_pose(poses[3:])
+            if cfg.TRANS_HEAD.NORMALISE:
+                car_trans[i] = normalise_pose(poses[3:])
+            else:
+                car_trans[i] = poses[3:]
 
     blobs['car_trans'] = car_trans

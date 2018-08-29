@@ -258,7 +258,7 @@ class Generalized_RCNN(nn.Module):
                 return_dict['losses']['loss_rot'] = loss_rot
                 return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls
                 return_dict['metrics']['shape_sim'] = shape_sim(car_cls[car_idx].data.cpu().numpy(), shape_sim_mat)
-                return_dict['metrics']['rot_sim'] = rot_sim(rot_pred[car_idx].data.cpu().numpy(), rpn_ret['quaternions'][car_idx])
+                return_dict['metrics']['rot_diff_degree'] = rot_sim(rot_pred[car_idx].data.cpu().numpy(), rpn_ret['quaternions'][car_idx])
 
             if cfg.MODEL.TRANS_HEAD_ON:
                 pred_boxes = car_3d_pose_heads.bbox_transform_pytorch(rpn_ret['rois'], bbox_pred, im_info,
@@ -274,7 +274,7 @@ class Generalized_RCNN(nn.Module):
                 label_trans = rpn_ret['car_trans'][car_idx]
                 loss_trans = car_3d_pose_heads.car_trans_losses(car_trans_pred, label_trans)
                 return_dict['losses']['loss_trans'] = loss_trans
-                return_dict['metrics']['trans_sim'] = trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
+                return_dict['metrics']['trans_diff_meter'] = trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
                                                                 cfg.TRANS_HEAD.TRANS_MEAN,
                                                                 cfg.TRANS_HEAD.TRANS_STD)
             else:
