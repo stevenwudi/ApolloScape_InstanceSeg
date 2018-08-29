@@ -194,7 +194,7 @@ class JsonDataset(object):
                 roidb = []
                 for entry in image_ids:
                     roidb.append(self._prep_roidb_entry_Car3D(entry))
-            if gt:
+            if gt and not list_flag == 'test':
                 self.debug_timer.tic()
                 for entry in tqdm(roidb):
                     if self.dataset_name == 'coco_2017_train':
@@ -557,7 +557,7 @@ class JsonDataset(object):
         entry['height'] = self.Car3D.image_shape[0]
         entry['width'] = self.Car3D.image_shape[1]
 
-        intrinsic_mat = self.Car3D.get_intrinsic_mat(entry_id)
+        intrinsic_mat = self.Car3D.get_intrinsic_mat()
         # Sanitize bboxes -- some are invalid
         valid_objs = []
         for i, car_pose in enumerate(car_poses):

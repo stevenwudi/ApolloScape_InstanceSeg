@@ -41,16 +41,21 @@ import utils.subprocess as subprocess_utils
 import utils.vis as vis_utils
 from utils.io import save_object, load_object
 from utils.timer import Timer
+from tqdm import tqdm
+from utilities.eval_car_instances import Detect3DEval
 
 logger = logging.getLogger(__name__)
 
 
-def get_eval_functions():
+def get_eval_functions(dataset_name):
     # Determine which parent or child function should handle inference
     if cfg.MODEL.RPN_ONLY:
         raise NotImplementedError
         # child_func = generate_rpn_on_range
         # parent_func = generate_rpn_on_dataset
+    elif dataset_name[0] == 'Car3D':
+        child_func = test_net_Car3D
+        parent_func = test_net_Car3D
     else:
         # Generic case that handles all network types other than RPN-only nets
         # and RetinaNet
@@ -83,7 +88,7 @@ def run_inference(
         args, ind_range=None,
         multi_gpu_testing=False, gpu_id=0,
         check_expected_results=False):
-    parent_func, child_func = get_eval_functions()
+    parent_func, child_func = get_eval_functions(cfg.TEST.DATASETS)
     is_parent = ind_range is None
 
     def result_getter():
@@ -311,7 +316,7 @@ def test_net(
                 box_proposals = None
 
             im = cv2.imread(entry['image'])
-            cls_boxes_i, cls_segms_i, cls_keyps_i, car_cls_i, rot_pred_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers)
+            cls_boxes_i, cls_segms_i, cls_keyps_i, car_cls_i, euler_angle_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers, dataset)
             extend_results(i, all_boxes, cls_boxes_i)
             if cls_segms_i is not None:
                 extend_results(i, all_segms, cls_segms_i)
@@ -350,7 +355,7 @@ def test_net(
                     os.path.join(output_dir, 'vis'),
                     boxes=cls_boxes_i,
                     car_cls_prob=car_cls_i,
-                    rot_pred=rot_pred_i,
+                    euler_angle=euler_angle_i,
                     trans_pred=trans_pred_i,
                     car_models=dataset.Car3D.car_models,
                     intrinsic=dataset.Car3D.get_intrinsic_mat(),
@@ -374,7 +379,116 @@ def test_net(
     return results
 
 
-def initialize_model_from_cfg(args):
+def test_net_Car3D(
+        args,
+        dataset_name,
+        proposal_file,
+        output_dir,
+        ind_range=None,
+        gpu_id=0):
+    """Run inference on all images in a dataset or over an index range of images
+    in a dataset using a single GPU.
+    """
+    assert not cfg.MODEL.RPN_ONLY, 'Use rpn_generate to generate proposals from RPN-only models'
+    dataset = JsonDataset(dataset_name, args.dataset_dir)
+    timers = defaultdict(Timer)
+
+    roidb, dataset, start_ind, end_ind, total_num_images = get_roidb_and_dataset(dataset, proposal_file, ind_range, args)
+    num_images = len(roidb)
+    image_ids = []
+    json_dir = os.path.join(output_dir, 'json_'+args.list_flag)
+
+    roidb = roidb
+    for i, entry in enumerate(roidb):
+        image_ids.append(entry['image'])
+    args.image_ids = image_ids
+
+    model = initialize_model_from_cfg(args, gpu_id=gpu_id)
+    for i in tqdm(range(len(roidb))):
+        entry = roidb[i]
+        if not os.path.exists(os.path.join(json_dir, entry['image'].split('/')[-1][:-4]+'.json')):
+            if cfg.TEST.PRECOMPUTED_PROPOSALS:
+                # The roidb may contain ground-truth rois (for example, if the roidb
+                # comes from the training or val split). We only want to evaluate
+                # detection on the *non*-ground-truth rois. We select only the rois
+                # that have the gt_classes field set to 0, which means there's no
+                # ground truth.
+                box_proposals = entry['boxes'][entry['gt_classes'] == 0]
+                if len(box_proposals) == 0:
+                    continue
+            else:
+                # Faster R-CNN type models generate proposals on-the-fly with an
+                # in-network RPN; 1-stage models don't require proposals.
+                box_proposals = None
+
+            im = cv2.imread(entry['image'])
+            cls_boxes_i, cls_segms_i, _, car_cls_i, euler_angle_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers, dataset)
+
+            if i % 10 == 0:  # Reduce log file size
+                ave_total_time = np.sum([t.average_time for t in timers.values()])
+                eta_seconds = ave_total_time * (num_images - i - 1)
+                eta = str(datetime.timedelta(seconds=int(eta_seconds)))
+                det_time = (
+                    timers['im_detect_bbox'].average_time +
+                    timers['im_detect_mask'].average_time +
+                    timers['im_car_cls'].average_time + timers['im_car_trans'].average_time
+                )
+                misc_time = (
+                    timers['misc_bbox'].average_time +
+                    timers['misc_mask'].average_time +
+                    timers['misc_keypoints'].average_time
+                )
+                logger.info(
+                    (
+                        'im_detect: range [{:d}, {:d}] of {:d}: '
+                        '{:d}/{:d} {:.3f}s + {:.3f}s (eta: {})'
+                    ).format(
+                        start_ind + 1, end_ind, total_num_images, start_ind + i + 1,
+                        start_ind + num_images, det_time, misc_time, eta
+                    )
+                )
+
+            im_name = os.path.splitext(os.path.basename(entry['image']))[0]
+            vis_utils.write_pose_to_json(
+                im_name=im_name,
+                output_dir=json_dir,
+                boxes=cls_boxes_i,
+                car_cls_prob=car_cls_i,
+                euler_angle=euler_angle_i,
+                trans_pred=trans_pred_i,
+                segms=cls_segms_i,
+                dataset=dataset.Car3D,
+                thresh=0.9
+            )
+
+            if cfg.VIS:
+                vis_utils.vis_one_image_eccv2018_car_3d(
+                    im[:, :, ::-1],
+                    '{:d}_{:s}'.format(i, im_name),
+                    os.path.join(output_dir, 'vis'),
+                    boxes=cls_boxes_i,
+                    car_cls_prob=car_cls_i,
+                    euler_angle=euler_angle_i,
+                    trans_pred=trans_pred_i,
+                    car_models=dataset.Car3D.car_models,
+                    intrinsic=dataset.Car3D.get_intrinsic_mat(),
+                    segms=cls_segms_i,
+                    keypoints=None,
+                    thresh=0.9,
+                    box_alpha=0.8,
+                    dataset=dataset.Car3D)
+
+    args.test_dir = json_dir
+    args.gt_dir = args.dataset_dir + 'car_poses'
+    args.res_file = os.path.join(output_dir, 'json_'+args.list_flag+'_res.txt')
+    args.simType = None
+    det_3d_metric = Detect3DEval(args)
+    det_3d_metric.evaluate()
+    det_3d_metric.accumulate()
+    det_3d_metric.summarize()
+
+
+def initialize_model_from_cfg(args, gpu_id=0):
     """Initialize a model from the global cfg. Loads test-time weights and
     set to evaluation mode.
     """
@@ -441,6 +555,29 @@ def empty_results(num_classes, num_images):
     all_segms = [[[] for _ in range(num_images)] for _ in range(num_classes)]
     all_keyps = [[[] for _ in range(num_images)] for _ in range(num_classes)]
     return all_boxes, all_segms, all_keyps
+
+
+def empty_results_car_3d(num_classes, num_images):
+    """Return empty results lists for boxes, masks, and keypoints.
+    Box detections are collected into:
+      all_boxes[cls][image] = N x 5 array with columns (x1, y1, x2, y2, score)
+    Instance mask predictions are collected into:
+      all_segms[cls][image] = [...] list of COCO RLE encoded masks that are in
+      1:1 correspondence with the boxes in all_boxes[cls][image]
+    Keypoint predictions are collected into:
+      all_keyps[cls][image] = [...] list of keypoints results, each encoded as
+      a 3D array (#rois, 4, #keypoints) with the 4 rows corresponding to
+      [x, y, logit, prob] (See: utils.keypoints.heatmaps_to_keypoints).
+      Keypoints are recorded for person (cls = 1); they are in 1:1
+      correspondence with the boxes in all_boxes[cls][image].
+    """
+    # Note: do not be tempted to use [[] * N], which gives N references to the
+    # *same* empty list.
+    all_boxes = [[[] for _ in range(num_images)] for _ in range(num_classes)]
+    all_segms = [[[] for _ in range(num_images)] for _ in range(num_classes)]
+    all_car_cls = [[[] for _ in range(num_images)] for _ in range(num_classes)]
+    all_pose = [[[] for _ in range(num_images)] for _ in range(num_classes)]
+    return all_boxes, all_segms, all_car_cls, all_pose
 
 
 def extend_results(index, all_res, im_res):

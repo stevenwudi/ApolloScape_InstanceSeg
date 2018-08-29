@@ -100,14 +100,14 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
             raise Exception('Not implemented')
         else:
             car_cls_score, car_cls, euler_angle = im_car_cls(model, im_scale, boxes, blob_conv)
-        timers['im_detect_mask'].toc()
+        timers['im_car_cls'].toc()
 
         # timers['misc_car_cls'].tic()
         # car_cls_misc = car_cls_results(cls_boxes, car_cls, boxes, im.shape[0], im.shape[1])
         # timers['misc_car_cls'].toc()
     else:
         car_cls = None
-        rot_pred = None
+        euler_angle = None
 
     # Trans head for 3d car translation (pose) estimation:
 

@@ -804,6 +804,10 @@ __C.CAR_CLS.CLS_SPECIFIC_ROT = False
 # Using Similarity matrix to reduce the car classificatin penalty: we only need their shapes to be similar
 __C.CAR_CLS.SIM_MAT_LOSS = False
 
+# For rotation clipping
+# Translation Mean DIM
+__C.CAR_CLS.ROT_MIN = (-3.14052, -1.55991,  -3.14159)
+__C.CAR_CLS.ROT_MAX = (1.1784,    1.55723,   3.14158)
 
 # ---------------------------------------------------------------------------- #
 # CAR_TRANS options, for predicting the car pose translation (x,y,z)

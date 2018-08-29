@@ -66,6 +66,7 @@ def quaternion_to_euler_angle(q):
 
     return X, Y, Z
 
+
 def intrinsic_vec_to_mat(intrinsic, shape=None):
     """Convert a 4 dim intrinsic vector to a 3x3 intrinsic
        matrix
@@ -256,6 +257,54 @@ def plot_images(images,
         pylab.savefig(fig_name)
     else:
         plt.show()
+
+
+def extract_intrinsic(dataset):
+    intrinsic_mat = dataset.Car3D.get_intrinsic_mat()
+    fx = intrinsic_mat[0][0]
+    fy = intrinsic_mat[1][1]
+    cx = intrinsic_mat[0][2]
+    cy = intrinsic_mat[1][2]
+    return fx, fy, cx, cy
+
+
+def im_car_trans_geometric(dataset, boxes, euler_angle, car_cls, im_scale=1.0):
+    ###
+    fx, fy, cx, cy = extract_intrinsic(dataset)
+
+    car_cls_max = np.argmax(car_cls, axis=1)
+    car_names = [dataset.Car3D.car_id2name[x].name for x in dataset.Car3D.unique_car_models[car_cls_max]]
+
+    if im_scale != 1:
+        raise Exception("not implemented, check it")
+    boxes = boxes / im_scale
+
+    car_trans_pred = []
+    for car_idx in range(boxes.shape[0]):
+        box = boxes[car_idx]
+        xc = ((box[0] + box[2]) / 2 - cx) / fx
+        yc = ((box[1] + box[3]) / 2 - cy) / fy
+        ymax = (box[3] - cy) / fy
+
+        # project 3D points to 2d image plane
+        euler_angle_i = euler_angle[car_idx]
+        rmat = euler_angles_to_rotation_matrix(euler_angle_i)
+
+        car = dataset.Car3D.car_models[car_names[car_idx]]
+        x_y_z_R = np.matmul(rmat, np.transpose(np.float32(car['vertices'])))
+        Rymax = x_y_z_R[1, :].max()
+        Rxc = x_y_z_R[0, :].mean()
+        Ryc = x_y_z_R[1, :].mean()
+        Rzc = x_y_z_R[2, :].mean()
+        zc = (Ryc - Rymax) / (yc - ymax)
+
+        xt = zc * xc - Rxc
+        yt = zc * yc - Ryc
+        zt = zc - Rzc
+        pred_pose = np.array([xt, yt, zt])
+        car_trans_pred.append(pred_pose)
+
+    return np.array(car_trans_pred)
 
 
 if __name__ == '__main__':
