@@ -45,9 +45,11 @@ import utils.blob as blob_utils
 import utils.fpn as fpn_utils
 import utils.image as image_utils
 import utils.keypoints as keypoint_utils
+from utilities.utils import im_car_trans_geometric
+from utilities.utils import quaternion_to_euler_angle
 
 
-def im_detect_all(model, im, box_proposals=None, timers=None):
+def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
     """Process the outputs of model for testing
     Args:
       model: the network module
@@ -97,7 +99,7 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
         if cfg.TEST.CAR_CLS_AUG.ENABLED:
             raise Exception('Not implemented')
         else:
-            car_cls_score, car_cls, rot_pred = im_car_cls(model, im_scale, boxes, blob_conv)
+            car_cls_score, car_cls, euler_angle = im_car_cls(model, im_scale, boxes, blob_conv)
         timers['im_detect_mask'].toc()
 
         # timers['misc_car_cls'].tic()
@@ -117,6 +119,10 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
             device_id = blob_conv[0].get_device()
             car_trans_pred = im_car_trans(model, im_scale, boxes, device_id)
         timers['im_car_trans'].toc()
+    elif boxes.shape[0] > 0:
+        # we use geometric method ###
+        car_trans_pred = im_car_trans_geometric(dataset, boxes, euler_angle, car_cls, im_scale=1.0)
+        timers['im_car_trans'].toc()
     else:
         car_trans_pred = None
 
@@ -134,7 +140,7 @@ def im_detect_all(model, im, box_proposals=None, timers=None):
     else:
         cls_keyps = None
 
-    return cls_boxes, cls_segms, cls_keyps, car_cls, rot_pred, car_trans_pred
+    return cls_boxes, cls_segms, cls_keyps, car_cls, euler_angle, car_trans_pred
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
@@ -413,7 +419,16 @@ def im_car_cls(model, im_scale, boxes, blob_conv):
     car_cls = car_cls.data.cpu().numpy().squeeze()
     rot_pred = rot_pred.data.cpu().numpy().squeeze()
 
-    return car_cls_score, car_cls, rot_pred
+    norm = np.linalg.norm(rot_pred, axis=1)
+    rot_pred_norm = rot_pred / norm[:, None]
+
+    # normalise the unit quaternion here
+    euler_angle = np.array([quaternion_to_euler_angle(x) for x in rot_pred_norm])
+    # euler_angle[:, 0] = np.clip(euler_angle[:, 0], cfg.CAR_CLS.ROT_MIN[0], cfg.CAR_CLS.ROT_MAX[0])
+    # euler_angle[:, 1] = np.clip(euler_angle[:, 1], cfg.CAR_CLS.ROT_MIN[1], cfg.CAR_CLS.ROT_MAX[1])
+    # euler_angle[:, 2] = np.clip(euler_angle[:, 2], cfg.CAR_CLS.ROT_MIN[2], cfg.CAR_CLS.ROT_MAX[2])
+
+    return car_cls_score, car_cls, euler_angle
 
 
 def im_car_trans(model, im_scale, boxes, device_id):
