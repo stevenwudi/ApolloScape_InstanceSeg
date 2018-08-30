@@ -800,6 +800,8 @@ __C.CAR_CLS.ROI_XFORM_RESOLUTION = 14
 
 __C.CAR_CLS.CLS_SPECIFIC_ROT = False
 
+# Normalise quaternion output to unit length.
+__C.CAR_CLS.QUAT_NORM = True
 
 # Using Similarity matrix to reduce the car classificatin penalty: we only need their shapes to be similar
 __C.CAR_CLS.SIM_MAT_LOSS = False
@@ -840,6 +842,12 @@ __C.TRANS_HEAD.LOSS = 'MSE'   # ['MSE', 'L1']
 
 # Loss mulitplication coefficience
 __C.TRANS_HEAD.LOSS_BETA = 0.01
+
+# Input norm by camera intrinsic
+__C.TRANS_HEAD.IPUT_NORM_BY_INTRINSIC = True
+
+# Input norm by camera intrinsic
+__C.TRANS_HEAD.CAMERA_INTRINSIC = (2304.54786556982, 2305.875668062, 1686.23787612802, 1354.98486439791)
 
 # Whether to normalise the Tran input
 __C.TRANS_HEAD.NORMALISE = False

@@ -115,7 +115,6 @@ class Generalized_RCNN(nn.Module):
                 self.shape_sim_mat = np.loadtxt('./utilities/sim_mat.txt')
                 unique_car_models = np.array(cfg.TRAIN.CAR_MODELS)
                 self.shape_sim_mat_loss = self.shape_sim_mat[unique_car_models, :][:, unique_car_models]
-
         # TRANS Branch for car translation regression
         if cfg.MODEL.TRANS_HEAD_ON:
             self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(cfg.TRANS_HEAD.INPUT_DIM)

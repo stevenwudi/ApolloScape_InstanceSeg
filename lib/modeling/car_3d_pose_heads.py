@@ -40,10 +40,11 @@ class fast_rcnn_outputs_car_cls_rot(nn.Module):
         if x.dim() == 4:
             x = x.squeeze(3).squeeze(2)
         cls_score = self.cls_score(x)
-        #if not self.training:
         cls = F.softmax(cls_score, dim=1)
 
         rot_pred = self.rot_pred(x)
+        if cfg.CAR_CLS.QUAT_NORM:
+            rot_pred = F.normalize(rot_pred, p=2, dim=1)
         return cls_score, cls, rot_pred
 
 
@@ -136,7 +137,7 @@ class roi_car_cls_rot_head(nn.Module):
 # ---------------------------------------------------------------------------- #
 # TRANS heads
 # ---------------------------------------------------------------------------- #
-def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0), ):
+def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0)):
     """Forward transform that maps proposal boxes to predicted ground-truth
     boxes using bounding-box regression deltas. See bbox_transform_inv for a
     description of the weights argument.
@@ -189,19 +190,30 @@ def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0), 
     # h (note: "- 1" is correct; don't be fooled by the asymmetry)
     pred_boxes[:, 3::4] = pred_h
 
-    # Normalise box: NOT DONE properly yet! Hard coded
+    if cfg.TRANS_HEAD.IPUT_NORM_BY_INTRINSIC:
+        im_scale = im_info[0][-1]
+        intrinsic_vect = np.array(cfg.TRANS_HEAD.CAMERA_INTRINSIC)
+        intrinsic_vect *= im_scale
 
-    im_shape = im_info[0][:2]
-    car_shape = (120, 120)
-    pred_boxes[:, 0::4] -= (im_shape[1]/2)
-    pred_boxes[:, 0::4] /= im_shape[1]
-    pred_boxes[:, 1::4] -= (im_shape[0]/2)
-    pred_boxes[:, 1::4] /= im_shape[0]
+        pred_boxes[:, 0::4] -= (intrinsic_vect[0] / 2)
+        pred_boxes[:, 0::4] /= intrinsic_vect[2]
+        pred_boxes[:, 1::4] -= (intrinsic_vect[1] / 2)
+        pred_boxes[:, 1::4] /= intrinsic_vect[3]
 
-    pred_boxes[:, 2::4] -= (car_shape[0]/2)
-    pred_boxes[:, 2::4] /= car_shape[0]
-    pred_boxes[:, 3::4] -= (car_shape[1]/2)
-    pred_boxes[:, 3::4] /= car_shape[1]
+        pred_boxes[:, 2::4] /= intrinsic_vect[2]
+        pred_boxes[:, 3::4] /= intrinsic_vect[3]
+    else:
+        im_shape = im_info[0][:2]
+        car_shape = (120, 120)
+        pred_boxes[:, 0::4] -= (im_shape[1]/2)
+        pred_boxes[:, 0::4] /= im_shape[1]
+        pred_boxes[:, 1::4] -= (im_shape[0]/2)
+        pred_boxes[:, 1::4] /= im_shape[0]
+
+        pred_boxes[:, 2::4] -= (car_shape[0]/2)
+        pred_boxes[:, 2::4] /= car_shape[0]
+        pred_boxes[:, 3::4] -= (car_shape[1]/2)
+        pred_boxes[:, 3::4] /= car_shape[1]
 
     pred_boxes = pred_boxes.cuda(device_id)
     return pred_boxes
@@ -231,22 +243,35 @@ def bbox_transform_pytorch_out(boxes, im_scale, device_id):
     pred_boxes[:, 3::4] = pred_h[:, None]
 
     # Normalise box: NOT DONE properly yet! Hard coded
-    im_shape_max = np.array([2710, 3384])
-    im_shape = im_scale * im_shape_max
-    car_shape = (120, 120)
-    pred_boxes[:, 0::4] -= (im_shape[1]/2)
-    pred_boxes[:, 0::4] /= im_shape[1]
-    pred_boxes[:, 1::4] -= (im_shape[0]/2)
-    pred_boxes[:, 1::4] /= im_shape[0]
+    if cfg.TRANS_HEAD.IPUT_NORM_BY_INTRINSIC:
+        intrinsic_vect = np.array(cfg.TRANS_HEAD.CAMERA_INTRINSIC)
+        intrinsic_vect *= im_scale
 
-    pred_boxes[:, 2::4] -= (car_shape[0]/2)
-    pred_boxes[:, 2::4] /= car_shape[0]
-    pred_boxes[:, 3::4] -= (car_shape[1]/2)
-    pred_boxes[:, 3::4] /= car_shape[1]
+        pred_boxes[:, 0::4] -= (intrinsic_vect[0] / 2)
+        pred_boxes[:, 0::4] /= intrinsic_vect[2]
+        pred_boxes[:, 1::4] -= (intrinsic_vect[1] / 2)
+        pred_boxes[:, 1::4] /= intrinsic_vect[3]
+
+        pred_boxes[:, 2::4] /= intrinsic_vect[2]
+        pred_boxes[:, 3::4] /= intrinsic_vect[3]
+    else:
+        im_shape_max = np.array([2710, 3384])
+        im_shape = im_scale * im_shape_max
+        car_shape = (120, 120)
+        pred_boxes[:, 0::4] -= (im_shape[1]/2)
+        pred_boxes[:, 0::4] /= im_shape[1]
+        pred_boxes[:, 1::4] -= (im_shape[0]/2)
+        pred_boxes[:, 1::4] /= im_shape[0]
+
+        pred_boxes[:, 2::4] -= (car_shape[0]/2)
+        pred_boxes[:, 2::4] /= car_shape[0]
+        pred_boxes[:, 3::4] -= (car_shape[1]/2)
+        pred_boxes[:, 3::4] /= car_shape[1]
 
     pred_boxes = Variable(torch.from_numpy(pred_boxes.astype('float32'))).cuda(device_id)
 
     return pred_boxes
+
 
 class bbox_2mlp_head(nn.Module):
     """Add a ReLU MLP with two hidden layers."""
