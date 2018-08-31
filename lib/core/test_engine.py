@@ -458,7 +458,7 @@ def test_net_Car3D(
                 trans_pred=trans_pred_i,
                 segms=cls_segms_i,
                 dataset=dataset.Car3D,
-                thresh=cfg.TEST.SCORE_THRESH
+                thresh=cfg.TEST.SCORE_THRESH_FOR_TRUTH_DETECTION
             )
 
             if cfg.VIS:

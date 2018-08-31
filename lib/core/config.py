@@ -237,6 +237,9 @@ __C.TEST.DETECTIONS_PER_IM = 100
 # detections that will slow down inference post processing steps (like NMS)
 __C.TEST.SCORE_THRESH = 0.1
 
+# The final threshold for detection acquisition
+__C.TEST.SCORE_THRESH_FOR_TRUTH_DETECTION = 0.9
+
 # Save detection results files if True
 # If false, results files are cleaned up (they can be large) after local
 # evaluation
