@@ -14,7 +14,7 @@ SOLVER:
   LR_POLICY: steps_with_decay
   BASE_LR: 0.01
   GAMMA: 0.1
-  MAX_ITER:  90000
+  MAX_ITER:  80000
   STEPS: [0, 20000, 40000]
   WARM_UP_ITERS: 500
   WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
@@ -82,7 +82,7 @@ TRAIN:
   SNAPSHOT_ITERS: 400
   CAR_MODELS: [2,  6,  7,  8,  9, 12, 14, 16, 18, 19, 20, 23, 25, 27, 28, 31, 32, 35, 37,  40, 43, 46, 47, 48, 50, 51, 54, 56, 60, 61, 66, 70, 71, 76]
 
-  BATCH_SIZE_PER_IM: 512 # we don't have so many cars per image and we care about positive clas
+  BATCH_SIZE_PER_IM: 256 # we don't have so many cars per image and we care about positive clas
   FREEZE_CONV_BODY: True
   FREEZE_FPN: True
 TEST:
@@ -91,7 +91,7 @@ TEST:
   SCALE: 0  # 2710
   MAX_SIZE: 3000  # 3384
   NMS: 0.5
-  DETECTIONS_PER_IM: 500
+  DETECTIONS_PER_IM: 200
   RPN_PRE_NMS_TOP_N: 2000  # Per FPN level
   RPN_POST_NMS_TOP_N: 2000  # 1000 default
   BBOX_VOTE:
