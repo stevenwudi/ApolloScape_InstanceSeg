@@ -1,5 +1,3 @@
-OUTPUT_DIR: '/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg'  #'/media/SSD_1TB/ApolloScape/ApolloScape_InstanceSeg'
-
 MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.fpn_ResNet101_conv5_body

@@ -49,6 +49,8 @@ def parse_args():
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')
     parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train')
+    parser.add_argument('--output_dir', default='/media/SSD_1TB/ApolloScape/ApolloScape_InstanceSeg''')
+
     # Optimization
     # These options has the highest prioity and can overwrite the values in config file or values set by set_cfgs. `None` means do not overwrite.
     parser.add_argument('--bs', dest='batch_size', help='Explicitly specify to overwrite the value comed from cfg_file.', type=int)
@@ -112,6 +114,7 @@ def main():
     merge_cfg_from_file(args.cfg_file)
 
     # Some manual adjustment for the ApolloScape dataset parameters here
+    cfg.OUTPUT_DIR = args.output_dir
     cfg.TRAIN.DATASETS = 'Car3D'
     cfg.MODEL.NUM_CLASSES = 8
     if cfg.CAR_CLS.SIM_MAT_LOSS:
