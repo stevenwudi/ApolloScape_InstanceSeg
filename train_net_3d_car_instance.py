@@ -1,7 +1,7 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-#os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import sys
 import pickle
@@ -43,7 +43,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a X-RCNN network')
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_shape_sim_loss.yaml', help='Config file for training (and optionally testing)')
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')
@@ -64,8 +65,8 @@ def parse_args():
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
 
-    #parser.add_argument('--load_ckpt', default='/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_3d_car_101_FPN/Aug23-23-19-14_N606-TITAN32_step/ckpt/model_step30855.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/Aug27-12-15-44_n606_step/ckpt/model_step8399.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug30-13-18-49_N606-TITAN32_step/ckpt/model_step52933.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/Aug27-12-15-44_n606_step/ckpt/model_step8399.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/home/stevenwudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_3d_car_101_FPN/Aug23-23-19-14_N606-TITAN32_step/ckpt/model_step89999.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/SSD_1TB/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug27-00-08-02_n606_step/ckpt/model_step35399.pth', help='checkpoint path to load')
 
@@ -113,7 +114,11 @@ def main():
     # Some manual adjustment for the ApolloScape dataset parameters here
     cfg.TRAIN.DATASETS = 'Car3D'
     cfg.MODEL.NUM_CLASSES = 8
-    cfg.MODEL.NUMBER_CARS = 34
+    if cfg.CAR_CLS.SIM_MAT_LOSS:
+        cfg.MODEL.NUMBER_CARS = 79
+    else:
+        # Loss is only cross entropy, hence, we detect only car categories in the training set.
+        cfg.MODEL.NUMBER_CARS = 34
     #cfg.TRAIN.MIN_AREA = 49   # 7*7
     cfg.TRAIN.MIN_AREA = 196   # 14*14
     cfg.TRAIN.USE_FLIPPED = False  # Currently I don't know how to handle the flipped case

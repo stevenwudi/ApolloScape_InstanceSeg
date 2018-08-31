@@ -111,10 +111,7 @@ class Generalized_RCNN(nn.Module):
         if cfg.MODEL.CAR_CLS_HEAD_ON:
             self.car_cls_Head = get_func(cfg.CAR_CLS.ROI_BOX_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale)
             self.car_cls_Outs = car_3d_pose_heads.fast_rcnn_outputs_car_cls_rot(self.car_cls_Head.dim_out)
-            if cfg.CAR_CLS.SIM_MAT_LOSS:
-                self.shape_sim_mat = np.loadtxt('./utilities/sim_mat.txt')
-                unique_car_models = np.array(cfg.TRAIN.CAR_MODELS)
-                self.shape_sim_mat_loss = self.shape_sim_mat[unique_car_models, :][:, unique_car_models]
+            self.shape_sim_mat = np.loadtxt('./utilities/sim_mat.txt')
         # TRANS Branch for car translation regression
         if cfg.MODEL.TRANS_HEAD_ON:
             self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(cfg.TRANS_HEAD.INPUT_DIM)
@@ -239,24 +236,18 @@ class Generalized_RCNN(nn.Module):
                 else:
                     ce_weight = None
 
-                shape_sim_mat = self.shape_sim_mat_loss[rpn_ret['car_cls_labels_int32'][car_idx].astype('int64')]
-
-                if cfg.CAR_CLS.SIM_MAT_LOSS:
-                    shape_sim_mat_loss_mat = []
-                    #print('Not implemented properly yet')
-                else:
-                    shape_sim_mat_loss_mat = []
                 loss_car_cls, loss_rot, accuracy_car_cls = car_3d_pose_heads.fast_rcnn_car_cls_rot_losses(car_cls_score[car_idx],
                                                                                                           rot_pred[car_idx],
                                                                                                           car_cls[car_idx],
                                                                                                           rpn_ret['car_cls_labels_int32'][car_idx],
                                                                                                           rpn_ret['quaternions'][car_idx],
                                                                                                           ce_weight,
-                                                                                                          shape_sim_mat_loss_mat=shape_sim_mat_loss_mat)
+                                                                                                          shape_sim_mat=self.shape_sim_mat)
+
                 return_dict['losses']['loss_car_cls'] = loss_car_cls
                 return_dict['losses']['loss_rot'] = loss_rot
                 return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls
-                return_dict['metrics']['shape_sim'] = shape_sim(car_cls[car_idx].data.cpu().numpy(), shape_sim_mat)
+                return_dict['metrics']['shape_sim'] = shape_sim(car_cls[car_idx].data.cpu().numpy(), self.shape_sim_mat, rpn_ret['car_cls_labels_int32'][car_idx].astype('int64'))
                 return_dict['metrics']['rot_diff_degree'] = rot_sim(rot_pred[car_idx].data.cpu().numpy(), rpn_ret['quaternions'][car_idx])
 
             if cfg.MODEL.TRANS_HEAD_ON:

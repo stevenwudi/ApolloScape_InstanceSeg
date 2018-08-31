@@ -12,7 +12,12 @@ import numpy as np
 class fast_rcnn_outputs_car_cls_rot(nn.Module):
     def __init__(self, dim_in):
         super().__init__()
-        self.cls_score = nn.Linear(dim_in, cfg.MODEL.NUMBER_CARS)
+        # Using shape sim has different classes, the NN structure is the same
+        # it's mainly for historcial weight loading
+        if cfg.CAR_CLS.SIM_MAT_LOSS:
+            self.cls_score_shape_sim = nn.Linear(dim_in, cfg.MODEL.NUMBER_CARS)
+        else:
+            self.cls_score = nn.Linear(dim_in, cfg.MODEL.NUMBER_CARS)
         if cfg.CAR_CLS.CLS_SPECIFIC_ROT:
             self.rot_pred = nn.Linear(dim_in, 4 * cfg.MODEL.NUMBER_CARS)
         else:
@@ -21,25 +26,34 @@ class fast_rcnn_outputs_car_cls_rot(nn.Module):
         self._init_weights()
 
     def _init_weights(self):
-        init.normal_(self.cls_score.weight, std=0.01)
-        init.constant_(self.cls_score.bias, 0)
+        if cfg.CAR_CLS.SIM_MAT_LOSS:
+            init.normal_(self.cls_score_shape_sim.weight, std=0.01)
+            init.constant_(self.cls_score_shape_sim.bias, 0)
+        else:
+            init.normal_(self.cls_score.weight, std=0.01)
+            init.constant_(self.cls_score.bias, 0)
         init.normal_(self.rot_pred.weight, std=0.001)
         init.constant_(self.rot_pred.bias, 0)
 
     def detectron_weight_mapping(self):
+        # Using shape sim has different classes
         detectron_weight_mapping = {
+            # 'cls_score_shape_sim.weight': 'cls_score_shape_sim_w',
+            # 'cls_score_shape_sim.bias': 'cls_score_shape_sim_b',
             'cls_score.weight': 'cls_score_w',
             'cls_score.bias': 'cls_score_b',
             'rot_pred.weight': 'rot_pred',
-            'rot_pred.bias': 'rot_pred'
-        }
+            'rot_pred.bias': 'rot_pred'}
         orphan_in_detectron = []
         return detectron_weight_mapping, orphan_in_detectron
 
     def forward(self, x):
         if x.dim() == 4:
             x = x.squeeze(3).squeeze(2)
-        cls_score = self.cls_score(x)
+        if cfg.CAR_CLS.SIM_MAT_LOSS:
+            cls_score = self.cls_score_shape_sim(x)
+        else:
+            cls_score = self.cls_score(x)
         cls = F.softmax(cls_score, dim=1)
 
         rot_pred = self.rot_pred(x)
@@ -49,23 +63,24 @@ class fast_rcnn_outputs_car_cls_rot(nn.Module):
 
 
 def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, car_cls, label_int32, quaternions,
-                                 ce_weight=None, shape_sim_mat_loss_mat=None):
+                                 ce_weight=None, shape_sim_mat=None):
     # For car classification loss, we only have classification losses
     # Or should we use sim_mat?
     device_id = cls_score.get_device()
     rois_label = Variable(torch.from_numpy(label_int32.astype('int64'))).cuda(device_id)
 
-    if len(shape_sim_mat_loss_mat):
-        if len(ce_weight):
-            coeff = shape_sim_mat_loss_mat * ce_weight
-        else:
-            coeff = shape_sim_mat_loss_mat
+    if cfg.CAR_CLS.SIM_MAT_LOSS:
+        shape_sim_mat_loss_mat = Variable(torch.from_numpy((1 - shape_sim_mat).astype('float32'))).cuda(device_id)
+        unique_modes = np.array(cfg.TRAIN.CAR_MODELS)
+        car_ids = label_int32.astype('int64')
+        loss_car_cls_total = Variable(torch.tensor(0.)).cuda(device_id)
+        for i in range(len(car_ids)):
+            pred_car_id = torch.argmax(car_cls[i])
+            gt_car_id = unique_modes[car_ids[i]]
+            loss = shape_sim_mat_loss_mat[gt_car_id, pred_car_id]
+            loss_car_cls_total += loss.sum()
 
-        loss_cls = Variable(torch.from_numpy(np.array(0)).float()).cuda(device_id)
-        for i in range(len(cls_score)):
-            coeff_car = Variable(torch.from_numpy(np.array(coeff[i])).float()).cuda(device_id)
-            loss_cls += F.cross_entropy(cls_score[i].unsqueeze(0), rois_label[i].unsqueeze(0), coeff_car)
-        loss_cls /= len(cls_score)
+            loss_cls = loss_car_cls_total / len(cls_score)
     else:
         if len(ce_weight):
             ce_weight = Variable(torch.from_numpy(np.array(ce_weight)).float()).cuda(device_id)
