@@ -406,10 +406,11 @@ def test_net_Car3D(
         image_ids.append(entry['image'])
     args.image_ids = image_ids
 
-    model = initialize_model_from_cfg(args, gpu_id=gpu_id)
-    for i in tqdm(range(len(roidb))):
-        entry = roidb[i]
-        if not os.path.exists(os.path.join(json_dir, entry['image'].split('/')[-1][:-4]+'.json')):
+    file_complete_flag = [not os.path.exists(os.path.join(json_dir, entry['image'].split('/')[-1][:-4] + '.json')) for entry in roidb]
+    if np.sum(file_complete_flag):
+        model = initialize_model_from_cfg(args, gpu_id=gpu_id)
+        for i in tqdm(range(len(roidb))):
+            entry = roidb[i]
             if cfg.TEST.PRECOMPUTED_PROPOSALS:
                 # The roidb may contain ground-truth rois (for example, if the roidb
                 # comes from the training or val split). We only want to evaluate
