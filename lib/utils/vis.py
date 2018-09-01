@@ -36,7 +36,7 @@ from utils.colormap import colormap
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
-import simplejson as json
+import json
 
 from utilities.utils import euler_angles_to_rotation_matrix
 plt.rcParams['pdf.fonttype'] = 42  # For editing in Adobe Illustrator
