@@ -208,7 +208,7 @@ class JsonDataset(object):
 
                 logger.debug('_add_gt_annotations took {:.3f}s'.format(self.debug_timer.toc(average=False)))
 
-                if cfg.TRAIN.USE_FLIPPED:
+                if cfg.TRAIN.USE_FLIPPED and not list_flag == 'val':
                     logger.info('Appending horizontally-flipped training examples...')
                     extend_with_flipped_entries(roidb)
                 logger.info('Loaded dataset: {:s}'.format(self.name + '_' + list_flag))

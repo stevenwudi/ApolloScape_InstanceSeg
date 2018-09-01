@@ -5,7 +5,7 @@ MODEL:
   MASK_ON: True
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
-  TRANS_HEAD_ON: True
+  TRANS_HEAD_ON: False
 
 RESNETS:
   IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'

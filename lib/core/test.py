@@ -102,9 +102,6 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
             car_cls_score, car_cls, euler_angle = im_car_cls(model, im_scale, boxes, blob_conv)
         timers['im_car_cls'].toc()
 
-        # timers['misc_car_cls'].tic()
-        # car_cls_misc = car_cls_results(cls_boxes, car_cls, boxes, im.shape[0], im.shape[1])
-        # timers['misc_car_cls'].toc()
     else:
         car_cls = None
         euler_angle = None
@@ -287,9 +284,7 @@ def im_detect_bbox_aug(model, im, box_proposals=None):
     # Compute detections for the original image (identity transform) last to
     # ensure that the Caffe2 workspace is populated with blobs corresponding
     # to the original image on return (postcondition of im_detect_bbox)
-    scores_i, boxes_i, im_scale_i, blob_conv_i = im_detect_bbox(
-        model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals
-    )
+    scores_i, boxes_i, im_scale_i, blob_conv_i = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals)
     add_preds_t(scores_i, boxes_i)
 
     # Combine the predicted scores
