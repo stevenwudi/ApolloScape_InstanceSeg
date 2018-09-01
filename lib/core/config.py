@@ -466,9 +466,6 @@ __C.MODEL.TRANS_HEAD_ON = False
 # Indicates the model makes Pose car class predictions (as in Mask R-CNN for keypoints)
 __C.MODEL.ROT_HEAD_ON = False
 
-# Indicates the model makes Pose translation predictions (as in Mask R-CNN for keypoints)
-__C.MODEL.TRANS_HEAD = False
-
 # Indicates the model makes keypoint predictions (as in Mask R-CNN for
 # keypoints)
 __C.MODEL.KEYPOINTS_ON = False

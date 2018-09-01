@@ -37,6 +37,7 @@ from utils.colormap import colormap
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import json
+from pycocotools import mask as maskUtils
 
 from utilities.utils import euler_angles_to_rotation_matrix
 plt.rcParams['pdf.fonttype'] = 42  # For editing in Adobe Illustrator
@@ -475,7 +476,8 @@ def render_car_cv2(pose, car_name, car_models, intrinsic, mesh_color, ax):
         ax.add_patch(polygon)
 
 
-def write_pose_to_json(im_name, output_dir, boxes, car_cls_prob, euler_angle, trans_pred, segms, dataset, thresh=0.9):
+def write_pose_to_json(im_name, output_dir, boxes, car_cls_prob, euler_angle, trans_pred,
+                       segms, dataset, thresh=0.9, ignored_mask_binary=None, iou_ignore_threshold=0.5):
     """
     Write a Json file for submission
     :param im_name:
@@ -491,7 +493,6 @@ def write_pose_to_json(im_name, output_dir, boxes, car_cls_prob, euler_angle, tr
         os.makedirs(output_dir)
 
     json_file = os.path.join(output_dir, im_name+'.json')
-
 
     if isinstance(boxes, list):
         boxes, segms, keypoints, classes = convert_from_cls_format(boxes, segms)
@@ -523,12 +524,20 @@ def write_pose_to_json(im_name, output_dir, boxes, car_cls_prob, euler_angle, tr
         car_model_i = dataset.unique_car_models[car_cls_i]
 
         if class_string == 'car':
-            car_info = dict()
-            car_info["car_id"] = int(car_model_i)
-            car_info["pose"] = [float(x) for x in euler_angle_i] + [float(x) for x in trans_pred_i]
-            car_info["area"] = int(masks[:, :, i].sum())
-            car_info["score"] = float(score)
-            car_list.append(car_info)
+            # filter out by ignored_mask_binary
+            dt_mask = masks[:, :, i]
+            dt_area = int(dt_mask.sum())
+            iou_mask = dt_mask * ignored_mask_binary
+            iou = np.sum(iou_mask) / dt_area
+            if iou <= iou_ignore_threshold:
+                car_info = dict()
+                car_info["car_id"] = int(car_model_i)
+                car_info["pose"] = [float(x) for x in euler_angle_i] + [float(x) for x in trans_pred_i]
+                car_info["area"] = dt_area
+                car_info["score"] = float(score)
+                car_list.append(car_info)
+            else:
+                print('This mask has been ignored')
 
     with open(json_file, 'w') as outfile:
         json.dump(car_list, outfile, indent=4)

@@ -425,6 +425,10 @@ def test_net_Car3D(
                 box_proposals = None
 
             im = cv2.imread(entry['image'])
+            ignored_mask_img = os.path.join(('/').join(entry['image'].split('/')[:-2]), 'ignore_mask', entry['image'].split('/')[-1])
+            ignored_mask = cv2.imread(ignored_mask_img, cv2.IMREAD_GRAYSCALE)
+            ignored_mask_binary = np.zeros(ignored_mask.shape)
+            ignored_mask_binary[ignored_mask > 250] = 1
             cls_boxes_i, cls_segms_i, _, car_cls_i, euler_angle_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers, dataset)
 
             if i % 10 == 0:  # Reduce log file size
@@ -461,7 +465,9 @@ def test_net_Car3D(
                 trans_pred=trans_pred_i,
                 segms=cls_segms_i,
                 dataset=dataset.Car3D,
-                thresh=cfg.TEST.SCORE_THRESH_FOR_TRUTH_DETECTION
+                thresh=cfg.TEST.SCORE_THRESH_FOR_TRUTH_DETECTION,
+                ignored_mask_binary=ignored_mask_binary.astype('uint8'),
+                iou_ignore_threshold=args.iou_ignore_threshold
             )
 
             if cfg.VIS:
