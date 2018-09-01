@@ -288,6 +288,71 @@ def bbox_transform_pytorch_out(boxes, im_scale, device_id):
     return pred_boxes
 
 
+class roi_trans_head(nn.Module):
+    """Add a ReLU MLP with two hidden layers.2048 -- 1024"""
+    def __init__(self, dim_in, roi_xform_func, spatial_scale, mlp_dim_in):
+        super().__init__()
+        self.dim_in = dim_in
+        self.roi_xform = roi_xform_func
+        self.spatial_scale = spatial_scale
+        hidden_dim_1 = cfg.CAR_CLS.MLP_HEAD_DIM
+        hidden_dim_2 = cfg.TRANS_HEAD.MLP_HEAD_DIM
+        self.dim_out = cfg.TRANS_HEAD.MLP_HEAD_DIM + hidden_dim_2
+
+        roi_size = cfg.CAR_CLS.ROI_XFORM_RESOLUTION
+        self.fc_conv_1 = nn.Linear(dim_in * roi_size**2, hidden_dim_1)
+        self.fc_conv_2 = nn.Linear(hidden_dim_1, hidden_dim_2)
+
+        self.fc_mlp_1 = nn.Linear(mlp_dim_in, cfg.TRANS_HEAD.MLP_HEAD_DIM)
+        self.fc_mlp_2 = nn.Linear(cfg.TRANS_HEAD.MLP_HEAD_DIM, cfg.TRANS_HEAD.MLP_HEAD_DIM)
+
+        self._init_weights()
+
+    def _init_weights(self):
+        mynn.init.XavierFill(self.fc_conv_1.weight)
+        init.constant_(self.fc_conv_1.bias, 0)
+        mynn.init.XavierFill(self.fc_conv_2.weight)
+        init.constant_(self.fc_conv_2.bias, 0)
+
+        mynn.init.XavierFill(self.fc_mlp_1.weight)
+        init.constant_(self.fc_mlp_1.bias, 0)
+        mynn.init.XavierFill(self.fc_mlp_2.weight)
+        init.constant_(self.fc_mlp_2.bias, 0)
+
+    def detectron_weight_mapping(self):
+        detectron_weight_mapping = {
+            'fc_conv_1.weight': 'fc_conv_1_w',
+            'fc_conv_1.bias': 'fc_conv_1_b',
+            'fc_conv_2.weight': 'fc_conv_2_b',
+            'fc_conv_2.bias': 'fc_conv_2_b',
+            'fc_mlp_1.weight': 'fc6_w',
+            'fc_mlp_1.bias': 'fc6_b',
+            'fc_mlp_2.weight': 'fc7_w',
+            'fc_mlp_2.bias': 'fc7_b'
+        }
+        return detectron_weight_mapping, []
+
+    def forward(self, x, rpn_ret, bbox):
+        x = self.roi_xform(
+            x, rpn_ret,
+            blob_rois='rois',
+            method=cfg.CAR_CLS.ROI_XFORM_METHOD,
+            resolution=cfg.CAR_CLS.ROI_XFORM_RESOLUTION,
+            spatial_scale=self.spatial_scale,
+            sampling_ratio=cfg.CAR_CLS.ROI_XFORM_SAMPLING_RATIO
+        )
+        batch_size = x.size(0)
+        x = F.relu(self.fc_conv_1(x.view(batch_size, -1)), inplace=True)
+        x = F.relu(self.fc_conv_2(x), inplace=True)
+
+        x_b = F.relu(self.fc_mlp_1(bbox.view(batch_size, -1)), inplace=True)
+        x_b = F.relu(self.fc_mlp_2(x_b), inplace=True)
+
+        x_merge = torch.cat((x, x_b), dim=1)
+
+        return x_merge
+
+
 class bbox_2mlp_head(nn.Module):
     """Add a ReLU MLP with two hidden layers."""
     def __init__(self, dim_in):

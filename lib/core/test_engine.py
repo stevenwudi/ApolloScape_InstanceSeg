@@ -407,6 +407,7 @@ def test_net_Car3D(
     args.image_ids = image_ids
 
     file_complete_flag = [not os.path.exists(os.path.join(json_dir, entry['image'].split('/')[-1][:-4] + '.json')) for entry in roidb]
+    # If we don't have the complete json file, we will load the model and execute the following:
     if np.sum(file_complete_flag):
         model = initialize_model_from_cfg(args, gpu_id=gpu_id)
         for i in tqdm(range(len(roidb))):

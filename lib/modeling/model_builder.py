@@ -114,8 +114,12 @@ class Generalized_RCNN(nn.Module):
             self.shape_sim_mat = np.loadtxt('./utilities/sim_mat.txt')
         # TRANS Branch for car translation regression
         if cfg.MODEL.TRANS_HEAD_ON:
-            self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(cfg.TRANS_HEAD.INPUT_DIM)
-            self.car_trans_Outs = car_3d_pose_heads.car_trans_outputs(self.car_trans_Head.dim_out)
+            if cfg.TRANS_HEAD.INPUT_CONV_BODY:
+                self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale, cfg.TRANS_HEAD.INPUT_DIM)
+                self.car_trans_Outs = car_3d_pose_heads.car_trans_outputs(self.car_trans_Head.dim_out)
+            else:
+                self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(cfg.TRANS_HEAD.INPUT_DIM)
+                self.car_trans_Outs = car_3d_pose_heads.car_trans_outputs(self.car_trans_Head.dim_out)
 
         # Mask Branch
         if cfg.MODEL.MASK_ON:
@@ -255,11 +259,16 @@ class Generalized_RCNN(nn.Module):
                                                                       cfg.MODEL.BBOX_REG_WEIGHTS)
                 car_idx = np.where(rpn_ret['labels_int32'] == car_cls_int)
 
-                pred_boxes_car = pred_boxes[car_idx, 4*car_cls_int:4*(car_cls_int+1)].squeeze(dim=0)
-
                 # Build translation head heres from the bounding box
-                car_trans_feat = self.car_trans_Head(pred_boxes_car)
-                car_trans_pred = self.car_trans_Outs(car_trans_feat)
+                if cfg.TRANS_HEAD.INPUT_CONV_BODY:
+                    pred_boxes_car = pred_boxes[:, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
+                    car_trans_feat = self.car_trans_Head(blob_conv, rpn_ret, pred_boxes_car)
+                    car_trans_pred = self.car_trans_Outs(car_trans_feat)
+                    car_trans_pred = car_trans_pred[car_idx]
+                else:
+                    pred_boxes_car = pred_boxes[car_idx, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
+                    car_trans_feat = self.car_trans_Head(pred_boxes_car)
+                    car_trans_pred = self.car_trans_Outs(car_trans_feat)
 
                 label_trans = rpn_ret['car_trans'][car_idx]
                 loss_trans = car_3d_pose_heads.car_trans_losses(car_trans_pred, label_trans)
@@ -267,17 +276,6 @@ class Generalized_RCNN(nn.Module):
                 return_dict['metrics']['trans_diff_meter'] = trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
                                                                 cfg.TRANS_HEAD.TRANS_MEAN,
                                                                 cfg.TRANS_HEAD.TRANS_STD)
-            else:
-                box_deltas = bbox_pred.data.cpu().numpy().squeeze()
-                pred_boxes = bbox_transform(rpn_ret['rois'], box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
-                pred_boxes_car = pred_boxes[car_idx, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(axis=0)
-
-                #### TEST CODE BELOW####
-                car_model = rpn_ret['car_cls_labels_int32'][car_idx][0]
-                quaternions_gt = rpn_ret['quaternions'][car_idx][0]
-                quaternions_dt = rot_pred[car_idx].data.cpu().numpy()[0]
-
-                infer_car_3d_translation(pred_boxes_car, car_model, quaternions_gt, quaternions_dt, rpn_ret)
 
             if cfg.MODEL.MASK_TRAIN_ON:
                 if getattr(self.Mask_Head, 'SHARE_RES5', False):

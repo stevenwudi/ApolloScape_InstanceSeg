@@ -825,6 +825,9 @@ __C.TRANS_HEAD.TRANS_HEAD = ''
 # INPUT DIM: bbox (x1, y1, x2, y2)
 __C.TRANS_HEAD.INPUT_DIM = 4
 
+# INPUT will also include conv body from ResNet
+__C.TRANS_HEAD.INPUT_CONV_BODY = False
+
 # Translation output DIM
 __C.TRANS_HEAD.OUTPUT_DIM = 3
 
