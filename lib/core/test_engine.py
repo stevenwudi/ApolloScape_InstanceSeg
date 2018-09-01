@@ -396,7 +396,10 @@ def test_net_Car3D(
     roidb, dataset, start_ind, end_ind, total_num_images = get_roidb_and_dataset(dataset, proposal_file, ind_range, args)
     num_images = len(roidb)
     image_ids = []
-    json_dir = os.path.join(output_dir, 'json_'+args.list_flag)
+    if cfg.MODEL.TRANS_HEAD_ON:
+        json_dir = os.path.join(output_dir, 'json_'+args.list_flag+'_trans')
+    else:
+        json_dir = os.path.join(output_dir, 'json_'+args.list_flag)
 
     roidb = roidb
     for i, entry in enumerate(roidb):

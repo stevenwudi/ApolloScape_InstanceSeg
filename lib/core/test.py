@@ -414,6 +414,7 @@ def im_car_cls(model, im_scale, boxes, blob_conv):
     car_cls = car_cls.data.cpu().numpy().squeeze()
     rot_pred = rot_pred.data.cpu().numpy().squeeze()
 
+    # The following two lines are not necessary if our network output already normalises the output
     norm = np.linalg.norm(rot_pred, axis=1)
     rot_pred_norm = rot_pred / norm[:, None]
 
