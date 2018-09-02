@@ -187,14 +187,6 @@ def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0)):
     pred_h = torch.exp(dh) * heights[:, np.newaxis]
 
     pred_boxes = torch.zeros(deltas.shape, dtype=deltas.dtype)
-    # x1
-    # pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
-    # # y1
-    # pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
-    # # x2 (note: "- 1" is correct; don't be fooled by the asymmetry)
-    # pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
-    # # y2 (note: "- 1" is correct; don't be fooled by the asymmetry)
-    # pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
 
     # # x1
     pred_boxes[:, 0::4] = pred_ctr_x
@@ -210,13 +202,13 @@ def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0)):
         intrinsic_vect = np.array(cfg.TRANS_HEAD.CAMERA_INTRINSIC)
         intrinsic_vect *= im_scale
 
-        pred_boxes[:, 0::4] -= (intrinsic_vect[0] / 2)
-        pred_boxes[:, 0::4] /= intrinsic_vect[2]
-        pred_boxes[:, 1::4] -= (intrinsic_vect[1] / 2)
-        pred_boxes[:, 1::4] /= intrinsic_vect[3]
+        pred_boxes[:, 0::4] -= intrinsic_vect[2]
+        pred_boxes[:, 0::4] /= intrinsic_vect[0]
+        pred_boxes[:, 1::4] -= intrinsic_vect[3]
+        pred_boxes[:, 1::4] /= intrinsic_vect[1]
 
-        pred_boxes[:, 2::4] /= intrinsic_vect[2]
-        pred_boxes[:, 3::4] /= intrinsic_vect[3]
+        pred_boxes[:, 2::4] /= intrinsic_vect[0]
+        pred_boxes[:, 3::4] /= intrinsic_vect[1]
     else:
         im_shape = im_info[0][:2]
         car_shape = (120, 120)
@@ -262,13 +254,13 @@ def bbox_transform_pytorch_out(boxes, im_scale, device_id):
         intrinsic_vect = np.array(cfg.TRANS_HEAD.CAMERA_INTRINSIC)
         intrinsic_vect *= im_scale
 
-        pred_boxes[:, 0::4] -= (intrinsic_vect[0] / 2)
-        pred_boxes[:, 0::4] /= intrinsic_vect[2]
-        pred_boxes[:, 1::4] -= (intrinsic_vect[1] / 2)
-        pred_boxes[:, 1::4] /= intrinsic_vect[3]
+        pred_boxes[:, 0::4] -= intrinsic_vect[2]
+        pred_boxes[:, 0::4] /= intrinsic_vect[0]
+        pred_boxes[:, 1::4] -= intrinsic_vect[3]
+        pred_boxes[:, 1::4] /= intrinsic_vect[1]
 
-        pred_boxes[:, 2::4] /= intrinsic_vect[2]
-        pred_boxes[:, 3::4] /= intrinsic_vect[3]
+        pred_boxes[:, 2::4] /= intrinsic_vect[0]
+        pred_boxes[:, 3::4] /= intrinsic_vect[1]
     else:
         im_shape_max = np.array([2710, 3384])
         im_shape = im_scale * im_shape_max
