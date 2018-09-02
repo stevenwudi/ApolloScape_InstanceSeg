@@ -273,9 +273,9 @@ class Generalized_RCNN(nn.Module):
                 label_trans = rpn_ret['car_trans'][car_idx]
                 loss_trans = car_3d_pose_heads.car_trans_losses(car_trans_pred, label_trans)
                 return_dict['losses']['loss_trans'] = loss_trans
-                return_dict['metrics']['trans_diff_meter'] = trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
-                                                                cfg.TRANS_HEAD.TRANS_MEAN,
-                                                                cfg.TRANS_HEAD.TRANS_STD)
+                return_dict['metrics']['trans_diff_meter'], return_dict['metrics']['trans_thresh_per'] = \
+                    trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
+                              cfg.TRANS_HEAD.TRANS_MEAN, cfg.TRANS_HEAD.TRANS_STD)
 
             if cfg.MODEL.MASK_TRAIN_ON:
                 if getattr(self.Mask_Head, 'SHARE_RES5', False):

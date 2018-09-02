@@ -88,7 +88,10 @@ def trans_sim(dt_car_trans, gt_car_trans, mean, std):
         dt_car_trans = dt_car_trans * std + mean
         gt_car_trans = gt_car_trans * std + mean
     dis_trans = np.linalg.norm(dt_car_trans-gt_car_trans, axis=1)
-    return dis_trans.mean()
+
+    # we also add a metric for dist<2.8 metres.
+    trans_thresh_per = np.sum(dis_trans < 2.8) / dis_trans.shape[0]
+    return dis_trans.mean(), trans_thresh_per
 
 
 def IOU(mask1, mask2):
