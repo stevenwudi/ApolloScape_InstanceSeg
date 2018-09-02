@@ -67,7 +67,7 @@ def parse_args():
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
     parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug30-13-18-49_N606-TITAN32_step/ckpt/model_step52933.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/Aug27-12-15-44_n606_step/ckpt/model_step8399.pth', help='checkpoint path to load')
@@ -127,7 +127,6 @@ def main():
     #cfg.TRAIN.MIN_AREA = 49   # 7*7
     cfg.TRAIN.MIN_AREA = 196   # 14*14
     cfg.TRAIN.USE_FLIPPED = False  # Currently I don't know how to handle the flipped case
-    cfg.SOLVER.BASE_LR = 0.005
     cfg.TRAIN.IMS_PER_BATCH = 1
 
     cfg.NUM_GPUS = torch.cuda.device_count()
@@ -328,9 +327,9 @@ def main():
                 elif method == 'linear':
                     alpha = step / cfg.SOLVER.WARM_UP_ITERS
                     warmup_factor = cfg.SOLVER.WARM_UP_FACTOR * (1 - alpha) + alpha
-                    # warmup_factor_trans = cfg.SOLVER.WARM_UP_FACTOR_TRANS * (1 - alpha) + alpha
-                    # warmup_factor_trans *= cfg.TRANS_HEAD.LOSS_BETA
-                    warmup_factor_trans = 1.0
+                    warmup_factor_trans = cfg.SOLVER.WARM_UP_FACTOR_TRANS * (1 - alpha) + alpha
+                    warmup_factor_trans *= cfg.TRANS_HEAD.LOSS_BETA
+                    #warmup_factor_trans = 1.0
                 else:
                     raise KeyError('Unknown SOLVER.WARM_UP_METHOD: {}'.format(method))
                 lr_new = cfg.SOLVER.BASE_LR * warmup_factor
