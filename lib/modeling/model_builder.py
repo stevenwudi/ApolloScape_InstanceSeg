@@ -15,14 +15,13 @@ import modeling.rpn_heads as rpn_heads
 import modeling.fast_rcnn_heads as fast_rcnn_heads
 import modeling.mask_rcnn_heads as mask_rcnn_heads
 import modeling.car_3d_pose_heads as car_3d_pose_heads
-from modeling.car_3d_pose_heads import infer_car_3d_translation
+from modeling.car_3d_pose_heads import plane_projection
 import modeling.keypoint_rcnn_heads as keypoint_rcnn_heads
 import utils.blob as blob_utils
 import utils.net as net_utils
 import utils.resnet_weights_helper as resnet_utils
 import numpy as np
 from utilities.eval_utils import shape_sim, rot_sim, trans_sim
-from utils.boxes import bbox_transform
 logger = logging.getLogger(__name__)
 
 
@@ -73,7 +72,8 @@ def check_inference(net_func):
 
 
 class Generalized_RCNN(nn.Module):
-    def __init__(self):
+    def __init__(self, ds=None):
+
         super().__init__()
 
         # For cache
@@ -120,6 +120,11 @@ class Generalized_RCNN(nn.Module):
             else:
                 self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(cfg.TRANS_HEAD.INPUT_DIM)
                 self.car_trans_Outs = car_3d_pose_heads.car_trans_outputs(self.car_trans_Head.dim_out)
+        # 3D to 2D projection error for multi-loss
+        if cfg.MODEL.LOSS_3D_2D_ON:
+            self.car_models = ds.load_car_models()
+            self.car_names = ds.unique_car_names
+            self.intrinsic_mat = ds.get_intrinsic_mat()
 
         # Mask Branch
         if cfg.MODEL.MASK_ON:
@@ -277,6 +282,21 @@ class Generalized_RCNN(nn.Module):
                     trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
                               cfg.TRANS_HEAD.TRANS_MEAN, cfg.TRANS_HEAD.TRANS_STD)
 
+            # A 3D to 2D projection loss
+            if cfg.MODEL.LOSS_3D_2D_ON:
+                # During the mesh generation, using GT(True) or predicted(False) Car ID
+                if cfg.LOSS_3D_2D.MESH_GEN_USING_GT:
+                    # Acquire car id
+                    car_ids = rpn_ret['car_cls_labels_int32'][car_idx].astype('int64')
+                else:
+                    # Using the predicted car id
+                    print("Not properly implemented for pytorch")
+                    car_ids = car_cls_score[car_idx].max(dim=1)
+                # Get mesh vertices
+                UV_projection = plane_projection(car_trans_pred, rot_pred, car_ids, im_info,
+                                                 self.car_models, self.intrinsic_mat, self.car_names)
+                # Generate loss
+
             if cfg.MODEL.MASK_TRAIN_ON:
                 if getattr(self.Mask_Head, 'SHARE_RES5', False):
                     mask_feat = self.Mask_Head(res5_feat, rpn_ret,
@@ -431,6 +451,17 @@ class Generalized_RCNN(nn.Module):
 
         # Build translation head heres from the bounding box
         car_trans_feat = self.car_trans_Head(pred_boxes)
+        car_trans_pred = self.car_trans_Outs(car_trans_feat)
+
+        return car_trans_pred
+
+    @check_inference
+    def car_trans_net_conv_body(self, bbox_pred, im_scale, blob_conv, rpn_blob, device_id):
+        """For inference"""
+        pred_boxes = car_3d_pose_heads.bbox_transform_pytorch_out(bbox_pred, im_scale, device_id)
+
+        # Build translation head heres from the bounding box
+        car_trans_feat = self.car_trans_Head(blob_conv, rpn_blob, pred_boxes)
         car_trans_pred = self.car_trans_Outs(car_trans_feat)
 
         return car_trans_pred

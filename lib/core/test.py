@@ -114,7 +114,10 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
             raise Exception('Not implemented')
         else:
             device_id = blob_conv[0].get_device()
-            car_trans_pred = im_car_trans(model, im_scale, boxes, device_id)
+            if cfg.TRANS_HEAD.INPUT_CONV_BODY:
+                car_trans_pred = im_car_trans_conv_body(model, im_scale, boxes, blob_conv, device_id)
+            else:
+                car_trans_pred = im_car_trans(model, im_scale, boxes, device_id)
         timers['im_car_trans'].toc()
     elif boxes.shape[0] > 0:
         # we use geometric method ###
@@ -443,6 +446,32 @@ def im_car_trans(model, im_scale, boxes, device_id):
     """
 
     car_trans_pred = model.module.car_trans_net(boxes, im_scale, device_id)
+    car_trans_pred = car_trans_pred.data.cpu().numpy().squeeze()
+
+    return car_trans_pred
+
+
+def im_car_trans_conv_body(model, im_scale, boxes, blob_conv, device_id):
+    """Infer car translation via boundingbox from faster-rcnn head.
+    This function must be called after im_detect_bbox as it assumes that the workspace is already populated
+    with the necessary blobs.
+
+    Arguments:
+        model (DetectionModelHelper): the detection model to use
+        im_scale (list): image blob scales as returned by im_detect_bbox
+        boxes (ndarray): R x 4 array of bounding box detections (e.g., as
+            returned by im_detect_bbox)
+
+    Returns:
+        pred_masks (ndarray): R x 1 array of car class vector output by the network
+    """
+    inputs = {'rois': _get_rois_blob(boxes, im_scale)}
+
+    # Add multi-level rois for FPN
+    if cfg.FPN.MULTILEVEL_ROIS:
+        _add_multilevel_rois_for_test(inputs, 'rois')
+
+    car_trans_pred = model.module.car_trans_net_conv_body(boxes, im_scale, blob_conv, inputs, device_id)
     car_trans_pred = car_trans_pred.data.cpu().numpy().squeeze()
 
     return car_trans_pred
