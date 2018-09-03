@@ -463,8 +463,9 @@ __C.MODEL.CAR_CLS_HEAD_ON = False
 # Indicates the model makes 3d car translation predictions
 __C.MODEL.TRANS_HEAD_ON = False
 
-# Indicates the model makes Pose car class predictions (as in Mask R-CNN for keypoints)
-__C.MODEL.ROT_HEAD_ON = False
+# Indicates the model use 3D to 2D projection error for multi-loss
+__C.MODEL.LOSS_3D_2D_ON = False
+
 
 # Indicates the model makes keypoint predictions (as in Mask R-CNN for
 # keypoints)
@@ -854,6 +855,14 @@ __C.TRANS_HEAD.CAMERA_INTRINSIC = (2304.54786556982, 2305.875668062, 1686.237876
 
 # Whether to normalise the Tran input
 __C.TRANS_HEAD.NORMALISE = False
+
+# ---------------------------------------------------------------------------- #
+# CAR3D loss: using 3D to 2D projection to generate loss, unifying the learning process
+# ---------------------------------------------------------------------------- #
+__C.LOSS_3D_2D = AttrDict()
+
+# During the mesh generation, using GT(True) or predicted(False) Car ID
+__C.LOSS_3D_2D.MESH_GEN_USING_GT = True
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)
 # ---------------------------------------------------------------------------- #

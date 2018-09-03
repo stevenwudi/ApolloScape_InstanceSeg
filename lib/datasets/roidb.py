@@ -72,7 +72,11 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None, list_flag='trai
     else:
         _compute_and_log_stats(roidbs, ds)
 
-    return roidbs, ratio_list, ratio_index
+    # If 3D to 2D, we need dataset car model, a bit hack here
+    if cfg.MODEL.LOSS_3D_2D_ON:
+        return roidbs, ratio_list, ratio_index, ds
+    else:
+        return roidbs, ratio_list, ratio_index
 
 
 def filter_for_training(roidb, cache_filepath_filtered):

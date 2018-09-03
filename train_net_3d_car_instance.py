@@ -1,7 +1,7 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import sys
 import pickle
@@ -44,8 +44,9 @@ def parse_args():
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
     #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_shape_sim_loss.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head_3d_2d_loss.yaml', help='Config file for training (and optionally testing)')
+
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')
@@ -67,12 +68,11 @@ def parse_args():
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
-    parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug30-13-18-49_N606-TITAN32_step/ckpt/model_step52933.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/Aug27-12-15-44_n606_step/ckpt/model_step8399.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/home/stevenwudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_3d_car_101_FPN/Aug23-23-19-14_N606-TITAN32_step/ckpt/model_step89999.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/SSD_1TB/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug27-00-08-02_n606_step/ckpt/model_step35399.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step61312.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step72750.pth', help='checkpoint path to load')
+    #parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
+    parser.add_argument('--ckpt_ignore_head', default=[], help='heads parameters will be ignored during loading')
 
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
@@ -124,7 +124,6 @@ def main():
     else:
         # Loss is only cross entropy, hence, we detect only car categories in the training set.
         cfg.MODEL.NUMBER_CARS = 34
-    #cfg.TRAIN.MIN_AREA = 49   # 7*7
     cfg.TRAIN.MIN_AREA = 196   # 14*14
     cfg.TRAIN.USE_FLIPPED = False  # Currently I don't know how to handle the flipped case
     cfg.TRAIN.IMS_PER_BATCH = 1
@@ -190,7 +189,11 @@ def main():
 
     ### Dataset ###
     timers['roidb'].tic()
-    roidb, ratio_list, ratio_index = combined_roidb_for_training(cfg.TRAIN.DATASETS, args.dataset_dir)
+    if cfg.MODEL.LOSS_3D_2D_ON:
+        roidb, ratio_list, ratio_index, ds = combined_roidb_for_training(cfg.TRAIN.DATASETS, args.dataset_dir)
+    else:
+        roidb, ratio_list, ratio_index = combined_roidb_for_training(cfg.TRAIN.DATASETS, args.dataset_dir)
+
     timers['roidb'].toc()
     roidb_size = len(roidb)
     logger.info('{:d} roidb entries'.format(roidb_size))
@@ -216,7 +219,10 @@ def main():
     dataiterator = iter(dataloader)
 
     ### Model ###
-    maskRCNN = Generalized_RCNN()
+    if cfg.MODEL.LOSS_3D_2D_ON:
+        maskRCNN = Generalized_RCNN(ds.Car3D)
+    else:
+        maskRCNN = Generalized_RCNN()
 
     if cfg.CUDA:
         maskRCNN.cuda()

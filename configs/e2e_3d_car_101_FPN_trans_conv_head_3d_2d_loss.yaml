@@ -5,7 +5,8 @@ MODEL:
   MASK_ON: True
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
-  TRANS_HEAD_ON: False
+  TRANS_HEAD_ON: True
+  LOSS_3D_2D_ON: False
 
 RESNETS:
   IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'
@@ -15,9 +16,9 @@ SOLVER:
   LR_POLICY: steps_with_decay
   BASE_LR: 0.001
   GAMMA: 0.1
-  MAX_ITER:  90000
+  MAX_ITER:  60000
   STEPS: [0, 20000, 40000]
-  WARM_UP_ITERS: 500
+  WARM_UP_ITERS: 1000
   WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
 FPN:
   FPN_ON: True
@@ -38,29 +39,27 @@ CAR_CLS:
   CLS_SPECIFIC_ROT: False # Use class specific mask predictions if True (otherwise use class agnostic rot predictions)
   QUAT_NORM: True  # Normalise quaternion output to unit length.
   SIM_MAT_LOSS: False
+  MLP_HEAD_DIM: 1024
   ROT_MIN: (-3.14052, -1.55991,  -3.14159)
   ROT_MAX: (1.1784, 1.55723, 3.14158)
 
 TRANS_HEAD:
-  TRANS_HEAD: car_3d_pose_heads.bbox_2mlp_head
+  TRANS_HEAD: car_3d_pose_heads.roi_trans_head
   INPUT_DIM: 4
+  INPUT_CONV_BODY: True
   OUTPUT_DIM: 3
   MLP_HEAD_DIM: 100
   TRANS_MEAN: (-3.756, 9.9432, 54.044)
   TRANS_STD: (15.005, 7.0902, 41.8559)
   LOSS: 'MSE'   # ['MSE', 'L1']
-  LOSS_BETA: 10.0
+  LOSS_BETA: 0.1
   NORMALISE: False
   IPUT_NORM_BY_INTRINSIC: True
   CAMERA_INTRINSIC: (2304.54786556982, 2305.875668062, 1686.23787612802, 1354.98486439791)
-#ROT_HEAD:
-#  ROI_ROT_HEAD: 3d_pose_head.roi_car_cls_rot_head
-#  ROI_XFORM_METHOD: RoIAlign
-#  ROI_XFORM_RESOLUTION: 14  # default 7
-#  ROI_XFORM_SAMPLING_RATIO: 2  # default 0
-#  DILATION: 1  # default 2
-#  CONV_INIT: MSRAFill  # default GaussianFill
-#  CLS_SPECIFIC_ROT: False # Use class specific mask predictions if True (otherwise use class agnostic rot predictions)
+
+LOSS_3D_2D:
+  MESH_GEN_USING_GT: True
+
 
 MRCNN:
   ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs
