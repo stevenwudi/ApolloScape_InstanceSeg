@@ -160,11 +160,15 @@ def load_ckpt(model, ckpt, ignore_list):
     state_dict = {}
     for name in ckpt:
         if name in mapping.keys():
-            for ignore_head in ignore_list:
-                if ignore_head in name:
-                    print('We ignore loading: %s' % name)
-                else:
-                    state_dict[name] = ckpt[name]
+            if len(ignore_list):
+                for ignore_head in ignore_list:
+                    if ignore_head in name:
+                        print('We ignore loading: %s' % name)
+                    else:
+                        state_dict[name] = ckpt[name]
+            # There is no ignore list:
+            else:
+                state_dict[name] = ckpt[name]
     model.load_state_dict(state_dict, strict=False)
 
 
