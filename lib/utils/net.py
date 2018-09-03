@@ -154,7 +154,7 @@ def save_ckpt(output_dir, args, model, optimizer):
     logger.info('save model: %s', save_name)
 
 
-def load_ckpt(model, ckpt, ignore_list):
+def load_ckpt(model, ckpt, ignore_list=[]):
     """Load checkpoint"""
     mapping, _ = model.detectron_weight_mapping
     state_dict = {}
