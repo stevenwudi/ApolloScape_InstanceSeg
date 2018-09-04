@@ -70,7 +70,7 @@ def huber_loss_rot(trans_pred, label_trans, device_id, degree=5):
     https://en.wikipedia.org/wiki/Huber_loss
     """
     degree_diff = np.cos(degree/360. * np.pi)
-    beta = np.sqrt(1 - degree_diff)
+    beta = np.sqrt(2*(1 - degree_diff))
 
     quaternion_diff = trans_pred - label_trans
 
