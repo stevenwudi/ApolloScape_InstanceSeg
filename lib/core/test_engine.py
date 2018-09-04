@@ -401,6 +401,7 @@ def test_net_Car3D(
     else:
         json_dir = os.path.join(output_dir, 'json_'+args.list_flag)
 
+    json_dir += '_iou' + str(args.iou_ignore_threshold)
     roidb = roidb
     for i, entry in enumerate(roidb):
         image_ids.append(entry['image'])
