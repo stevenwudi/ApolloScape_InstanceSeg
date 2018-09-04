@@ -39,7 +39,7 @@ CAR_CLS:
   QUAT_NORM: True  # Normalise quaternion output to unit length.
   SIM_MAT_LOSS: False
 
-  ROT_LOSS: 'ARCCOS'   # ['MSE', 'L1', 'ARCCOS']
+  ROT_LOSS: 'L1'   # ['MSE', 'L1', 'ARCCOS']
   ROT_LOSS_BETA: 0.1   # For ARCOS better set as 0.1 (as degree)
   ROT_MIN: (-3.14052, -1.55991,  -3.14159)
   ROT_MAX: (1.1784, 1.55723, 3.14158)

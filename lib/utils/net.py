@@ -60,13 +60,18 @@ def huber_loss(bbox_pred, bbox_targets, device_id, beta=2.8):
     return loss_box
 
 
-def huber_loss_rot(trans_pred, label_trans, device_id, degree=50, beta=0.906307787):
+def huber_loss_rot(trans_pred, label_trans, device_id, degree=5):
     """
-    beta is re-calculated as: np.cos(50./360 * np.pi) = 906307787
+    beta is re-calculated as:
+    np.cos(5./360 * np.pi) = 0.999
+    0.999 = abs ( 1- diff**2) --> beta = sqrt(0.001) = -.0316
     SmoothL1(x) = 0.5 * x^2 / beta      if |x| < beta
                   |x| - 0.5 * beta      otherwise.
     https://en.wikipedia.org/wiki/Huber_loss
     """
+    degree_diff = np.cos(degree/360. * np.pi)
+    beta = np.sqrt(1 - degree_diff)
+
     quaternion_diff = trans_pred - label_trans
 
     pi = Variable(torch.tensor([np.pi]).to(torch.float32)).cuda(device_id)
@@ -75,8 +80,8 @@ def huber_loss_rot(trans_pred, label_trans, device_id, degree=50, beta=0.9063077
     inbox_idx = degree_diff <= degree
     outbox_idx = degree_diff > degree
 
-    bbox_inside_weights = Variable(torch.from_numpy(inbox_idx.astype('float32'))).cuda(device_id)
-    bbox_outside_weights = Variable(torch.from_numpy(outbox_idx.astype('float32'))).cuda(device_id)
+    bbox_inside_weights = Variable(torch.tensor(inbox_idx, dtype=torch.float32)).cuda(device_id)
+    bbox_outside_weights = Variable(torch.tensor(outbox_idx, dtype=torch.float32)).cuda(device_id)
 
     in_box_pow_diff = 0.5 * torch.pow(quaternion_diff, 2) / beta
     in_box_loss = in_box_pow_diff.sum(dim=1) * bbox_inside_weights

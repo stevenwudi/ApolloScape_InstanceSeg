@@ -111,7 +111,8 @@ def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, car_cls, label_int32, quat
         N = diff.size(0)  # batch size
         loss_rot = loss_rot.view(-1).sum(0) / N
     elif cfg.CAR_CLS.ROT_LOSS == 'HUBER':
-        loss_rot = net_utils.huber_loss_rot(rot_pred, quaternions, device_id)
+        degree = cfg.CAR_CLS.ROT_HUBER_THRESHOLD
+        loss_rot = net_utils.huber_loss_rot(rot_pred, quaternions, device_id, degree)
 
     return loss_cls, loss_rot, accuracy_cls
 
@@ -436,7 +437,8 @@ def car_trans_losses(trans_pred, label_trans):
         loss_trans = torch.abs(trans_pred - label_trans)
         loss_trans = loss_trans.view(-1).sum(0) / N
     elif cfg.TRANS_HEAD.LOSS == 'HUBER':
-        loss_trans = net_utils.huber_loss(trans_pred, label_trans, device_id)
+        beta = cfg.TRANS_HEAD.TRANS_HUBER_THRESHOLD
+        loss_trans = net_utils.huber_loss(trans_pred, label_trans, device_id, beta)
     return loss_trans
 
 

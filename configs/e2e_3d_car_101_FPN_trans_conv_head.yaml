@@ -39,12 +39,12 @@ CAR_CLS:
   QUAT_NORM: True  # Normalise quaternion output to unit length.
   SIM_MAT_LOSS: False
 
-  ROT_LOSS: 'ARCCOS'   # ['MSE', 'L1', 'ARCCOS']
+  ROT_LOSS: 'HUBER'   # ['MSE', 'L1', 'ARCCOS', 'HUBER']  "ARCOS" will make network diverge..
   ROT_LOSS_BETA: 0.1   # For ARCOS better set as 0.1 (as degree)
   MLP_HEAD_DIM: 1024
   ROT_MIN: (-3.14052, -1.55991,  -3.14159)
   ROT_MAX: (1.1784, 1.55723, 3.14158)
-
+  ROT_HUBER_THRESHOLD: 5  # 5 degrees
 TRANS_HEAD:
   TRANS_HEAD: car_3d_pose_heads.roi_trans_head
   INPUT_DIM: 4
@@ -54,6 +54,7 @@ TRANS_HEAD:
   TRANS_MEAN: (-3.756, 9.9432, 54.044)
   TRANS_STD: (15.005, 7.0902, 41.8559)
   LOSS: 'HUBER'   # ['MSE', 'L1', 'HUBER']  #'HUBER' loss
+  TRANS_HUBER_THRESHOLD: 2.8
   LOSS_BETA: 0.1
   NORMALISE: False
   IPUT_NORM_BY_INTRINSIC: True

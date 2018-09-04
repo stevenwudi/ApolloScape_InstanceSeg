@@ -1,7 +1,7 @@
 import argparse
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import sys
 import pickle
@@ -43,8 +43,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a X-RCNN network')
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
     #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head_3d_2d_loss.yaml', help='Config file for training (and optionally testing)')
 
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
@@ -71,7 +71,7 @@ def parse_args():
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step61312.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step72750.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step79999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-00-18-30_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
 
     #parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
     parser.add_argument('--ckpt_ignore_head', default=[], help='heads parameters will be ignored during loading')

@@ -809,7 +809,10 @@ __C.CAR_CLS.SIM_MAT_LOSS = False
 
 
 # Normalise quaternion output to unit length.
-__C.CAR_CLS.ROT_LOSS = 'L1' # ['MSE', 'L1', 'ARCCOS']
+__C.CAR_CLS.ROT_LOSS = 'L1'  # ['MSE', 'L1', 'ARCCOS', 'HUBER']
+
+# Rotational Huber treshold: we care more about the inside, stabilise the learning process
+__C.TRANS_HEAD.ROT_HUBER_THRESHOLD = 5
 
 # Rotational loss multiplication coefficient
 __C.CAR_CLS.ROT_LOSS_BETA = 1.0
@@ -849,7 +852,10 @@ __C.TRANS_HEAD.TRANS_MEAN = (-3.756, 9.9432, 54.044)
 __C.TRANS_HEAD.TRANS_STD = (15.005, 7.0902, 41.8559)
 
 # Translation output DIM
-__C.TRANS_HEAD.LOSS = 'MSE'   # ['MSE', 'L1']
+__C.TRANS_HEAD.LOSS = 'MSE'   # ['MSE', 'L1', 'HUBER']
+
+# Translation Huber treshold: we care more about the inside, stabilise the learning process
+__C.TRANS_HEAD.TRANS_HUBER_THRESHOLD = 2.8
 
 # Loss mulitplication coefficience
 __C.TRANS_HEAD.LOSS_BETA = 0.01
