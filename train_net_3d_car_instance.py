@@ -44,8 +44,8 @@ def parse_args():
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
     #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head_3d_2d_loss.yaml', help='Config file for training (and optionally testing)')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head_3d_2d_loss.yaml', help='Config file for training (and optionally testing)')
 
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
@@ -384,6 +384,8 @@ def main():
                     if cfg.MODEL.TRANS_HEAD_ON:
                         net_outputs['losses']['loss_trans'] *= warmup_factor_trans
                     loss += net_outputs['losses']['loss_trans']
+                if cfg.MODEL.LOSS_3D_2D_ON:
+                    loss += net_outputs['losses']['UV_projection_loss']
                 loss.backward()
             optimizer.step()
             training_stats.IterToc()

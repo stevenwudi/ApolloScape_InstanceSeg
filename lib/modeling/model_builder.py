@@ -15,7 +15,7 @@ import modeling.rpn_heads as rpn_heads
 import modeling.fast_rcnn_heads as fast_rcnn_heads
 import modeling.mask_rcnn_heads as mask_rcnn_heads
 import modeling.car_3d_pose_heads as car_3d_pose_heads
-from modeling.car_3d_pose_heads import plane_projection
+from modeling.car_3d_pose_heads import plane_projection_loss
 import modeling.keypoint_rcnn_heads as keypoint_rcnn_heads
 import utils.blob as blob_utils
 import utils.net as net_utils
@@ -292,10 +292,13 @@ class Generalized_RCNN(nn.Module):
                     # Using the predicted car id
                     print("Not properly implemented for pytorch")
                     car_ids = car_cls_score[car_idx].max(dim=1)
-                # Get mesh vertices
-                UV_projection = plane_projection(car_trans_pred, rot_pred, car_ids, im_info,
-                                                 self.car_models, self.intrinsic_mat, self.car_names)
-                # Generate loss
+                # Get mesh vertices and generate loss
+                UV_projection_loss = plane_projection_loss(car_trans_pred, label_trans,
+                                                      rot_pred[car_idx], rpn_ret['quaternions'][car_idx],
+                                                      car_ids, im_info,
+                                                      self.car_models, self.intrinsic_mat, self.car_names)
+
+                return_dict['losses']['UV_projection_loss'] = UV_projection_loss
 
             if cfg.MODEL.MASK_TRAIN_ON:
                 if getattr(self.Mask_Head, 'SHARE_RES5', False):

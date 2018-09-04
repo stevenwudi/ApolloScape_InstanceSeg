@@ -6,7 +6,7 @@ MODEL:
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
   TRANS_HEAD_ON: True
-  LOSS_3D_2D_ON: False
+  LOSS_3D_2D_ON: True
 
 RESNETS:
   IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'
@@ -16,8 +16,8 @@ SOLVER:
   LR_POLICY: steps_with_decay
   BASE_LR: 0.001
   GAMMA: 0.1
-  MAX_ITER:  30000
-  STEPS: [0, 10000, 20000]
+  MAX_ITER:  80000
+  STEPS: [0, 20000, 40000]
   WARM_UP_ITERS: 1000
   WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
 FPN:
@@ -40,12 +40,12 @@ CAR_CLS:
   QUAT_NORM: True  # Normalise quaternion output to unit length.
   SIM_MAT_LOSS: False
 
-  ROT_LOSS: 'ARCCOS'   # ['MSE', 'L1', 'ARCCOS']
+  ROT_LOSS: 'HUBER'   # ['MSE', 'L1', 'ARCCOS']
   ROT_LOSS_BETA: 0.1   # For ARCOS better set as 0.1 (as degree)
   MLP_HEAD_DIM: 1024
   ROT_MIN: (-3.14052, -1.55991,  -3.14159)
   ROT_MAX: (1.1784, 1.55723, 3.14158)
-
+  ROT_HUBER_THRESHOLD: 5  # 5 degrees
 TRANS_HEAD:
   TRANS_HEAD: car_3d_pose_heads.roi_trans_head
   INPUT_DIM: 4
@@ -55,6 +55,7 @@ TRANS_HEAD:
   TRANS_MEAN: (-3.756, 9.9432, 54.044)
   TRANS_STD: (15.005, 7.0902, 41.8559)
   LOSS: 'HUBER'   # ['MSE', 'L1', 'HUBER']  #'HUBER' loss
+  TRANS_HUBER_THRESHOLD: 2.8
   LOSS_BETA: 0.1
   NORMALISE: False
   IPUT_NORM_BY_INTRINSIC: True
@@ -62,6 +63,7 @@ TRANS_HEAD:
 
 LOSS_3D_2D:
   MESH_GEN_USING_GT: True
+  PROJECTION_LOSS: 'L1'  # ['L1']
 
 
 MRCNN:

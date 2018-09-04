@@ -15,8 +15,8 @@ SOLVER:
   LR_POLICY: steps_with_decay
   BASE_LR: 0.001
   GAMMA: 0.1
-  MAX_ITER:  30000
-  STEPS: [0, 10000, 20000]
+  MAX_ITER:  80000
+  STEPS: [0, 20000, 40000]
   WARM_UP_ITERS: 1000
   WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
 FPN:

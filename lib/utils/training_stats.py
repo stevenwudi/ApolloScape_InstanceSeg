@@ -110,6 +110,8 @@ class TrainingStats(object):
 
         if cfg.MODEL.TRANS_HEAD_ON:
             loss_names = ['loss_car_cls', 'loss_rot', 'loss_trans']
+        if cfg.MODEL.LOSS_3D_2D_ON:
+            loss_names = ['loss_car_cls', 'loss_rot', 'loss_trans', 'UV_projection_loss']
 
         for name in loss_names:
             loss = model_out['losses'][name]

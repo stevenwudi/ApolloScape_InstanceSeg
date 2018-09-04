@@ -463,36 +463,64 @@ def car_trans_losses(trans_pred, label_trans):
 #     return image
 #
 #
-def plane_projection(car_trans_pred, rot_pred, car_ids, im_info, car_models, intrinsic_mat, car_names):
+def plane_projection_loss(car_trans_pred, gt_trans, rot_pred, gt_quaternions,
+                          car_ids, im_info, car_models, intrinsic_mat, car_names):
     device_id = car_trans_pred.get_device()
     assert (rot_pred.get_device() == device_id)
+    assert(car_trans_pred.shape == gt_trans.shape)
+    assert(rot_pred.shape == gt_quaternions.shape)
+    assert(car_trans_pred.shape[0] == rot_pred.shape[0])
+
+    gt_trans_tensor = torch.tensor(gt_trans, dtype=torch.float32)
+    gt_quaternions_tensor = torch.tensor(gt_quaternions, dtype=torch.float32)
     # Get R* XYZ + T point
     fx, fy, cx, cy = extract_intrinsic_from_mat(intrinsic_mat, device_id)
+    projection_loss_total = Variable(torch.tensor(0., dtype=torch.float32)).cuda(device_id)
+
     for i, car_id in enumerate(car_ids):
         car_name = car_names[int(car_id)]
         vertices = car_models[car_name]['vertices']
         vertices = Variable(torch.from_numpy(vertices.astype('float32'))).cuda(device_id)
-        rotation_matrix = quaternion_to_rotation_mat_pytorch(rot_pred[i]).cuda(device_id)
-        x_y_z_R = torch.mm(rotation_matrix, torch.t(vertices))
-        x_y_z_R_T = x_y_z_R + car_trans_pred[i].unsqueeze_(-1)
 
-        x_y_z_R_T[0, :] /= x_y_z_R_T[2, :]
-        x_y_z_R_T[1, :] /= x_y_z_R_T[2, :]
-        U = fx * x_y_z_R_T[0, :] + cx
-        V = fy * x_y_z_R_T[1, :] + cy
+        rotation_matrix_pred = quaternion_to_rotation_mat_pytorch(rot_pred[i]).cuda(device_id)
+        x_y_z_R_pred = torch.mm(rotation_matrix_pred, torch.t(vertices))
+        x_y_z_R_T_pred = x_y_z_R_pred + car_trans_pred[i].unsqueeze_(-1)
 
-        u = U.cpu().data.numpy()
-        v = V.cpu().data.numpy()
-        from matplotlib import pyplot as plt
-        plt.scatter(u, v)
-        vertices_vector = np.c_[vertices, np.ones(vertices.shape[0])]
-        vertices_pytorch = Variable(torch.from_numpy(vertices_vector.astype('float32'))).cuda(device_id)
-        intrinsic_mat_pytorch = Variable(torch.from_numpy(intrinsic_mat.astype('float32'))).cuda(device_id)
-        perspective_transform_matrix = torch.cat((rotation_matrix, car_trans_pred[i].unsqueeze_(-1)), dim=1)
-        # Get 2D Projection points using camera intrinsics
-        UV = torch.mm(torch.mm(intrinsic_mat_pytorch, perspective_transform_matrix), torch.t(vertices_pytorch))
+        x_y_z_R_T_pred_U = x_y_z_R_T_pred[0, :] / x_y_z_R_T_pred[2, :]
+        x_y_z_R_T_pred_V = x_y_z_R_T_pred[1, :] / x_y_z_R_T_pred[2, :]
 
-    return UV
+        rotation_matrix_gt = quaternion_to_rotation_mat_pytorch(gt_quaternions_tensor[i]).cuda(device_id)
+        x_y_z_R_gt = torch.mm(rotation_matrix_gt, torch.t(vertices))
+        x_y_z_R_T_gt = x_y_z_R_gt + gt_trans_tensor[i].unsqueeze_(-1).cuda(device_id)
+        x_y_z_R_T_gt_U= x_y_z_R_T_gt[0, :] / x_y_z_R_T_gt[2, :]
+        x_y_z_R_T_gt_V = x_y_z_R_T_gt[1, :] / x_y_z_R_T_gt[2, :]
+
+        x_y_z_R_T_diff_U = x_y_z_R_T_pred_U - x_y_z_R_T_gt_U
+        x_y_z_R_T_diff_V = x_y_z_R_T_pred_V - x_y_z_R_T_gt_V
+
+        if cfg.LOSS_3D_2D.PROJECTION_LOSS == 'L1':
+            loss = torch.abs(x_y_z_R_T_diff_U).sum() + torch.abs(x_y_z_R_T_diff_V).sum()
+        else:
+            print("Not implemented!")
+        projection_loss = loss / vertices.shape[0]
+        projection_loss_total = projection_loss_total + projection_loss
+
+        # Visualisation code
+        # from matplotlib import pyplot as plt
+        # U_pred = fx * x_y_z_R_T_pred[0, :] + cx
+        # V_pred = fy * x_y_z_R_T_pred[1, :] + cy
+        # U_gt = fx * x_y_z_R_T_gt[0, :] + cx
+        # V_gt = fy * x_y_z_R_T_gt[1, :] + cy
+        # u_pred = U_pred.cpu().data.numpy()
+        # v_pred = V_pred.cpu().data.numpy()
+        # u_gt = U_gt.cpu().data.numpy()
+        # v_gt = V_gt.cpu().data.numpy()
+        # plt.scatter(u_pred, v_pred, edgecolors='b')
+        # # Plot the ground truth here
+        # plt.scatter(u_gt, v_gt, edgecolors='r')
+
+    projection_loss_total = projection_loss_total / len(car_ids)
+    return projection_loss_total
 
 
 def quaternion_to_rotation_mat_pytorch(rot_pred):

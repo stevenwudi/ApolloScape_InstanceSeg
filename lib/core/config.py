@@ -876,6 +876,10 @@ __C.LOSS_3D_2D = AttrDict()
 
 # During the mesh generation, using GT(True) or predicted(False) Car ID
 __C.LOSS_3D_2D.MESH_GEN_USING_GT = True
+
+# 2D projection error
+__C.LOSS_3D_2D.PROJECTION_LOSS = 'L1'
+
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)
 # ---------------------------------------------------------------------------- #
