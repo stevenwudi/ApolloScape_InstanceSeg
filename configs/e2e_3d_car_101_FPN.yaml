@@ -5,7 +5,7 @@ MODEL:
   MASK_ON: True
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
-  TRANS_HEAD_ON: False
+  TRANS_HEAD_ON: True
 
 RESNETS:
   IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'
@@ -51,8 +51,8 @@ TRANS_HEAD:
   MLP_HEAD_DIM: 100
   TRANS_MEAN: (-3.756, 9.9432, 54.044)
   TRANS_STD: (15.005, 7.0902, 41.8559)
-  LOSS: 'MSE'   # ['MSE', 'L1']
-  LOSS_BETA: 10.0
+  LOSS: 'HUBER'   # ['MSE', 'L1', 'HUBER']  #'HUBER' loss
+  LOSS_BETA: 1.0
   NORMALISE: False
   IPUT_NORM_BY_INTRINSIC: True
   CAMERA_INTRINSIC: (2304.54786556982, 2305.875668062, 1686.23787612802, 1354.98486439791)

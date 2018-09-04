@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from torch.autograd import Variable
+import utils.net as net_utils
 
 from core.config import cfg
 import nn as mynn
@@ -104,10 +105,10 @@ def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, car_cls, label_int32, quat
         N = loss_rot.size(0)  # batch size
         loss_rot = loss_rot.view(-1).sum(0) / N
     elif cfg.CAR_CLS.ROT_LOSS == 'ARCCOS':
-        diff = 1 - ((rot_pred - quaternions) ** 2/2).sum(dim=1)
-        N = diff.size(0)  # batch size
         pi = Variable(torch.tensor([np.pi]).to(torch.float32)).cuda(device_id)
+        diff = torch.abs((rot_pred * quaternions).sum(dim=1))
         loss_rot = 2 * torch.acos(diff) * 180 / pi
+        N = diff.size(0)  # batch size
         loss_rot = loss_rot.view(-1).sum(0) / N
     return loss_cls, loss_rot, accuracy_cls
 
@@ -423,13 +424,16 @@ def car_trans_losses(trans_pred, label_trans):
     label_trans = Variable(torch.from_numpy(label_trans.astype('float32'))).cuda(device_id)
 
     # loss rot
-    N = trans_pred.shape[0]
+
     if cfg.TRANS_HEAD.LOSS == 'MSE':
         loss = nn.MSELoss()
         loss_trans = loss(trans_pred, label_trans)
     elif cfg.TRANS_HEAD.LOSS == 'L1':
+        N = trans_pred.shape[0]
         loss_trans = torch.abs(trans_pred - label_trans)
-    loss_trans = loss_trans.view(-1).sum(0) / N
+        loss_trans = loss_trans.view(-1).sum(0) / N
+    elif cfg.TRANS_HEAD.LOSS == 'HUBER':
+        loss_trans = net_utils.huber_loss(trans_pred, label_trans, device_id)
     return loss_trans
 
 

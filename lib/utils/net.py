@@ -32,6 +32,34 @@ def smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_we
     return loss_box
 
 
+def huber_loss(bbox_pred, bbox_targets, device_id, beta=2.8):
+    """
+    SmoothL1(x) = 0.5 * x^2 / beta      if |x| < beta
+                  |x| - 0.5 * beta      otherwise.
+    https://en.wikipedia.org/wiki/Huber_loss
+    """
+    box_diff = bbox_pred - bbox_targets
+
+    dis_trans = np.linalg.norm(box_diff.data.cpu().numpy(), axis=1)
+    # we also add a metric for dist<2.8 metres.
+    inbox_idx = dis_trans <= 2.8
+    outbox_idx = dis_trans > 2.8
+
+    bbox_inside_weights = Variable(torch.from_numpy(inbox_idx.astype('float32'))).cuda(device_id)
+    bbox_outside_weights = Variable(torch.from_numpy(outbox_idx.astype('float32'))).cuda(device_id)
+
+    in_box_pow_diff = 0.5 * torch.pow(box_diff, 2) / beta
+    in_box_loss = in_box_pow_diff.sum(dim=1) * bbox_inside_weights
+
+    out_box_abs_diff = torch.abs(box_diff)
+    out_box_loss = (out_box_abs_diff.sum(dim=1) - beta / 2) * bbox_outside_weights
+
+    loss_box = in_box_loss + out_box_loss
+    N = loss_box.size(0)  # batch size
+    loss_box = loss_box.view(-1).sum(0) / N
+    return loss_box
+
+
 def clip_gradient(model, clip_norm):
     """Computes a gradient clipping coefficient based on gradient norm."""
     totalnorm = 0
