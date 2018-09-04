@@ -807,6 +807,13 @@ __C.CAR_CLS.QUAT_NORM = True
 # Using Similarity matrix to reduce the car classificatin penalty: we only need their shapes to be similar
 __C.CAR_CLS.SIM_MAT_LOSS = False
 
+
+# Normalise quaternion output to unit length.
+__C.CAR_CLS.ROT_LOSS = 'L1' # ['MSE', 'L1', 'ARCCOS']
+
+# Rotational loss multiplication coefficient
+__C.CAR_CLS.ROT_LOSS_BETA = 1.0
+
 # For rotation clipping
 # Translation Mean DIM
 __C.CAR_CLS.ROT_MIN = (-3.14052, -1.55991,  -3.14159)

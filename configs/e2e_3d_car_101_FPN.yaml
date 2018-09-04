@@ -15,8 +15,8 @@ SOLVER:
   LR_POLICY: steps_with_decay
   BASE_LR: 0.001
   GAMMA: 0.1
-  MAX_ITER:  90000
-  STEPS: [0, 20000, 40000]
+  MAX_ITER:  30000
+  STEPS: [0, 10000, 20000]
   WARM_UP_ITERS: 500
   WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
 FPN:
@@ -38,6 +38,9 @@ CAR_CLS:
   CLS_SPECIFIC_ROT: False # Use class specific mask predictions if True (otherwise use class agnostic rot predictions)
   QUAT_NORM: True  # Normalise quaternion output to unit length.
   SIM_MAT_LOSS: False
+
+  ROT_LOSS: 'ARCCOS'   # ['MSE', 'L1', 'ARCCOS']
+  ROT_LOSS_BETA: 0.1   # For ARCOS better set as 0.1 (as degree)
   ROT_MIN: (-3.14052, -1.55991,  -3.14159)
   ROT_MAX: (1.1784, 1.55723, 3.14158)
 

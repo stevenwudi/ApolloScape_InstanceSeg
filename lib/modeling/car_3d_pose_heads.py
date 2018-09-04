@@ -94,9 +94,21 @@ def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, car_cls, label_int32, quat
 
     # loss rot
     quaternions = Variable(torch.from_numpy(quaternions.astype('float32'))).cuda(device_id)
-    loss_rot = torch.abs(rot_pred - quaternions)
-    N = loss_rot.size(0)  # batch size
-    loss_rot = loss_rot.view(-1).sum(0) / N
+
+    if cfg.CAR_CLS.ROT_LOSS == 'L1':
+        loss_rot = torch.abs(rot_pred - quaternions)
+        N = loss_rot.size(0)  # batch size
+        loss_rot = loss_rot.view(-1).sum(0) / N
+    elif cfg.CAR_CLS.ROT_LOSS == 'MSE':
+        loss_rot = (rot_pred - quaternions) ** 2
+        N = loss_rot.size(0)  # batch size
+        loss_rot = loss_rot.view(-1).sum(0) / N
+    elif cfg.CAR_CLS.ROT_LOSS == 'ARCCOS':
+        diff = 1 - ((rot_pred - quaternions) ** 2/2).sum(dim=1)
+        N = diff.size(0)  # batch size
+        pi = Variable(torch.tensor([np.pi]).to(torch.float32)).cuda(device_id)
+        loss_rot = 2 * torch.acos(diff) * 180 / pi
+        loss_rot = loss_rot.view(-1).sum(0) / N
     return loss_cls, loss_rot, accuracy_cls
 
 

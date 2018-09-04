@@ -25,11 +25,11 @@ def parse_args():
     """Parse in command line arguments"""
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
 
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step80464.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step79999.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step80464.pth', help='checkpoint path to load')
 
     parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train/')
 
