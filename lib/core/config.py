@@ -812,7 +812,7 @@ __C.CAR_CLS.SIM_MAT_LOSS = False
 __C.CAR_CLS.ROT_LOSS = 'L1'  # ['MSE', 'L1', 'ARCCOS', 'HUBER']
 
 # Rotational Huber treshold: we care more about the inside, stabilise the learning process
-__C.TRANS_HEAD.TRANS_HUBER_THRESHOLD = 5
+__C.CAR_CLS.ROT_HUBER_THRESHOLD = 5
 
 # Rotational loss multiplication coefficient
 __C.CAR_CLS.ROT_LOSS_BETA = 1.0
