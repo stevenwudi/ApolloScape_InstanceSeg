@@ -60,6 +60,36 @@ def huber_loss(bbox_pred, bbox_targets, device_id, beta=2.8):
     return loss_box
 
 
+def huber_loss_rot(trans_pred, label_trans, device_id, degree=50, beta=0.906307787):
+    """
+    beta is re-calculated as: np.cos(50./360 * np.pi) = 906307787
+    SmoothL1(x) = 0.5 * x^2 / beta      if |x| < beta
+                  |x| - 0.5 * beta      otherwise.
+    https://en.wikipedia.org/wiki/Huber_loss
+    """
+    quaternion_diff = trans_pred - label_trans
+
+    pi = Variable(torch.tensor([np.pi]).to(torch.float32)).cuda(device_id)
+    diff = torch.abs((trans_pred * label_trans).sum(dim=1))
+    degree_diff = 2 * torch.acos(diff) * 180 / pi
+    inbox_idx = degree_diff <= degree
+    outbox_idx = degree_diff > degree
+
+    bbox_inside_weights = Variable(torch.from_numpy(inbox_idx.astype('float32'))).cuda(device_id)
+    bbox_outside_weights = Variable(torch.from_numpy(outbox_idx.astype('float32'))).cuda(device_id)
+
+    in_box_pow_diff = 0.5 * torch.pow(quaternion_diff, 2) / beta
+    in_box_loss = in_box_pow_diff.sum(dim=1) * bbox_inside_weights
+
+    out_box_abs_diff = torch.abs(quaternion_diff)
+    out_box_loss = (out_box_abs_diff.sum(dim=1) - beta / 2) * bbox_outside_weights
+
+    loss_box = in_box_loss + out_box_loss
+    N = loss_box.size(0)  # batch size
+    loss_box = loss_box.view(-1).sum(0) / N
+    return loss_box
+
+
 def clip_gradient(model, clip_norm):
     """Computes a gradient clipping coefficient based on gradient norm."""
     totalnorm = 0

@@ -110,6 +110,9 @@ def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, car_cls, label_int32, quat
         loss_rot = 2 * torch.acos(diff) * 180 / pi
         N = diff.size(0)  # batch size
         loss_rot = loss_rot.view(-1).sum(0) / N
+    elif cfg.CAR_CLS.ROT_LOSS == 'HUBER':
+        loss_rot = net_utils.huber_loss_rot(rot_pred, quaternions, device_id)
+
     return loss_cls, loss_rot, accuracy_cls
 
 
