@@ -1,7 +1,7 @@
 import argparse
 import os
-#os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import sys
 import pickle
@@ -44,7 +44,7 @@ def parse_args():
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
     #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_3d_2d.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head.yaml', help='Config file for training (and optionally testing)')
     #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
     #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head_3d_2d_loss.yaml', help='Config file for training (and optionally testing)')
 
@@ -75,7 +75,7 @@ def parse_args():
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-00-18-30_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
 
     #parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
-    parser.add_argument('--ckpt_ignore_head', default=[], help='heads parameters will be ignored during loading')
+    parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
 
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
@@ -336,9 +336,9 @@ def main():
                 elif method == 'linear':
                     alpha = step / cfg.SOLVER.WARM_UP_ITERS
                     warmup_factor = cfg.SOLVER.WARM_UP_FACTOR * (1 - alpha) + alpha
-                    warmup_factor_trans = cfg.SOLVER.WARM_UP_FACTOR_TRANS * (1 - alpha) + alpha
-                    warmup_factor_trans *= cfg.TRANS_HEAD.LOSS_BETA
-                    #warmup_factor_trans = 1.0
+                    # warmup_factor_trans = cfg.SOLVER.WARM_UP_FACTOR_TRANS * (1 - alpha) + alpha
+                    # warmup_factor_trans *= cfg.TRANS_HEAD.LOSS_BETA
+                    warmup_factor_trans = 1.0
                 else:
                     raise KeyError('Unknown SOLVER.WARM_UP_METHOD: {}'.format(method))
                 lr_new = cfg.SOLVER.BASE_LR * warmup_factor
@@ -375,15 +375,14 @@ def main():
 
                 net_outputs = maskRCNN(**input_data)
 
+                net_outputs['losses']['loss_car_cls'] *= cfg.CAR_CLS.CAR_CLS_LOSS_BETA
                 net_outputs['losses']['loss_rot'] *= cfg.CAR_CLS.ROT_LOSS_BETA
                 training_stats.UpdateIterStats_car_3d(net_outputs)
                 # start training
                 # loss_car_cls: 2.233790, loss_rot: 0.296853, loss_trans: ~100
-                loss = net_outputs['losses']['loss_car_cls'] +\
-                       net_outputs['losses']['loss_rot']
+                loss = net_outputs['losses']['loss_car_cls'] + net_outputs['losses']['loss_rot']
                 if cfg.MODEL.TRANS_HEAD_ON:
-                    if cfg.MODEL.TRANS_HEAD_ON:
-                        net_outputs['losses']['loss_trans'] *= warmup_factor_trans
+                    net_outputs['losses']['loss_trans'] *= warmup_factor_trans
                     loss += net_outputs['losses']['loss_trans']
                 if cfg.MODEL.LOSS_3D_2D_ON:
                     loss += net_outputs['losses']['UV_projection_loss']

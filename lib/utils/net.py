@@ -232,6 +232,8 @@ def load_ckpt(model, ckpt, ignore_list=[]):
             # There is no ignore list:
             else:
                 state_dict[name] = ckpt[name]
+        else:
+            print("Unload detectron mapping %s." % name)
     model.load_state_dict(state_dict, strict=False)
 
 

@@ -117,6 +117,10 @@ class Generalized_RCNN(nn.Module):
             if cfg.TRANS_HEAD.INPUT_CONV_BODY:
                 self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(self.RPN.dim_out, self.roi_feature_transform, self.Conv_Body.spatial_scale, cfg.TRANS_HEAD.INPUT_DIM)
                 self.car_trans_Outs = car_3d_pose_heads.car_trans_outputs(self.car_trans_Head.dim_out)
+            elif cfg.TRANS_HEAD.INPUT_TRIPLE_HEAD:
+                # We use the 1024 dim from car_cls+rot head
+                self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(cfg.TRANS_HEAD.INPUT_DIM)
+                self.car_trans_Outs = car_3d_pose_heads.car_trans_triple_outputs(self.car_trans_Head.dim_out, self.car_cls_Head.dim_out)
             else:
                 self.car_trans_Head = get_func(cfg.TRANS_HEAD.TRANS_HEAD)(cfg.TRANS_HEAD.INPUT_DIM)
                 self.car_trans_Outs = car_3d_pose_heads.car_trans_outputs(self.car_trans_Head.dim_out)
@@ -154,6 +158,10 @@ class Generalized_RCNN(nn.Module):
 
         if cfg.TRAIN.FREEZE_CONV_BODY:
             for p in self.Conv_Body.parameters():
+                p.requires_grad = False
+
+        if cfg.TRAIN.FREEZE_RPN:
+            for p in self.RPN.parameters():
                 p.requires_grad = False
 
         if cfg.TRAIN.FREEZE_FPN:
@@ -269,6 +277,11 @@ class Generalized_RCNN(nn.Module):
                     pred_boxes_car = pred_boxes[:, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
                     car_trans_feat = self.car_trans_Head(blob_conv, rpn_ret, pred_boxes_car)
                     car_trans_pred = self.car_trans_Outs(car_trans_feat)
+                    car_trans_pred = car_trans_pred[car_idx]
+                elif cfg.TRANS_HEAD.INPUT_TRIPLE_HEAD:
+                    pred_boxes_car = pred_boxes[:, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
+                    car_trans_feat = self.car_trans_Head(pred_boxes_car)
+                    car_trans_pred = self.car_trans_Outs(car_trans_feat, car_cls_rot_feat)
                     car_trans_pred = car_trans_pred[car_idx]
                 else:
                     pred_boxes_car = pred_boxes[car_idx, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)

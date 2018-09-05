@@ -422,6 +422,41 @@ class car_trans_outputs(nn.Module):
         return trans_pred
 
 
+class car_trans_triple_outputs(nn.Module):
+    def __init__(self, dim_in_mlp, dim_in_car_cls_rot):
+        super().__init__()
+        self.car_cls_rot_linear = nn.Linear(dim_in_car_cls_rot, cfg.TRANS_HEAD.MLP_HEAD_DIM)
+        self.trans_pred = nn.Linear(dim_in_mlp + cfg.TRANS_HEAD.MLP_HEAD_DIM, cfg.TRANS_HEAD.OUTPUT_DIM)
+        self._init_weights()
+
+    def _init_weights(self):
+        mynn.init.XavierFill(self.car_cls_rot_linear.weight)
+        init.constant_(self.car_cls_rot_linear.bias, 0)
+        init.normal_(self.trans_pred.weight, std=0.1)
+        init.constant_(self.trans_pred.bias, 0)
+
+    def detectron_weight_mapping(self):
+        detectron_weight_mapping = {
+            'car_cls_rot_linear.weight': 'car_cls_rot_linear_w',
+            'car_cls_rot_linear.bias': 'car_cls_rot_linear_b',
+            'trans_pred.weight': 'trans_pred_w',
+            'trans_pred.bias': 'trans_pred_b',
+        }
+        orphan_in_detectron = []
+        return detectron_weight_mapping, orphan_in_detectron
+
+    def forward(self, x_mlp, x_car_cls_rot):
+        if x_mlp.dim() == 4:
+            x_mlp = x_mlp.squeeze(3).squeeze(2)
+
+        batch_size = x_mlp.size(0)
+
+        x_car_cls_rot = F.relu(self.car_cls_rot_linear(x_car_cls_rot.view(batch_size, -1)), inplace=True)
+        x_merge = F.relu(torch.cat((x_mlp, x_car_cls_rot), dim=1))
+        trans_pred = self.trans_pred(x_merge)
+        return trans_pred
+
+
 def car_trans_losses(trans_pred, label_trans):
     # For car classification loss, we only have classification losses
     # Or should we use sim_mat?
