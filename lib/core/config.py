@@ -169,6 +169,9 @@ __C.TRAIN.GT_MIN_AREA = -1
 # Freeze the backbone architecture during training if set to True
 __C.TRAIN.FREEZE_CONV_BODY = False
 
+# Freeze the RPN architecture during training if set to True
+__C.TRAIN.FREEZE_RPN = False
+
 # Freeze the FPN class and box head during training if set to True
 __C.TRAIN.FREEZE_FPN =  False
 # ---------------------------------------------------------------------------- #
@@ -817,6 +820,9 @@ __C.CAR_CLS.ROT_HUBER_THRESHOLD = 5
 # Rotational loss multiplication coefficient
 __C.CAR_CLS.ROT_LOSS_BETA = 1.0
 
+# Rotational loss multiplication coefficient
+__C.CAR_CLS.CAR_CLS_LOSS_BETA = 1.0
+
 # For rotation clipping
 # Translation Mean DIM
 __C.CAR_CLS.ROT_MIN = (-3.14052, -1.55991,  -3.14159)
@@ -835,6 +841,10 @@ __C.TRANS_HEAD.TRANS_HEAD = ''
 
 # INPUT DIM: bbox (x1, y1, x2, y2)
 __C.TRANS_HEAD.INPUT_DIM = 4
+
+# INPUT will also include conv body from ResNet and then car cls and rot head (will be of dim 1024)
+__C.TRANS_HEAD.INPUT_TRIPLE_HEAD = False
+
 
 # INPUT will also include conv body from ResNet
 __C.TRANS_HEAD.INPUT_CONV_BODY = False
