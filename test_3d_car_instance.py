@@ -5,11 +5,10 @@ import cv2
 import os
 import pprint
 import sys
-import time
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import torch
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 import _init_paths  # pylint: disable=unused-import
 from core.config import cfg, merge_cfg_from_file, merge_cfg_from_list, assert_and_infer_cfg
@@ -25,10 +24,10 @@ def parse_args():
     """Parse in command line arguments"""
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
 
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step79999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-12-54-39_n606_step/ckpt/model_step39899.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step80464.pth', help='checkpoint path to load')
 
     parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train/')
@@ -37,8 +36,8 @@ def parse_args():
     parser.add_argument('--output_dir', help='output directory to save the testing results. If not provided defaults to [args.load_ckpt|args.load_detectron]/../test.')
     parser.add_argument('--set', dest='set_cfgs', help='set config keys, will overwrite config in the cfg_file. See lib/core/config.py for all options', default=[], nargs='*')
     parser.add_argument('--multi-gpu-testing', help='using multiple gpus for inference', default=False, action='store_true')
-    parser.add_argument('--vis', default=False,  dest='vis', help='visualize detections', action='store_true')
-    parser.add_argument('--list_flag', default='val', help='Choosing between [val, test]')
+    parser.add_argument('--vis', default=True,  dest='vis', help='visualize detections', action='store_true')
+    parser.add_argument('--list_flag', default='train', help='Choosing between [val, test]')
     parser.add_argument('--iou_ignore_threshold', default=0.5, help='Filter out by this iou')
 
     return parser.parse_args()
@@ -89,6 +88,8 @@ if __name__ == '__main__':
         args.range = [0, 1041]
     elif args.list_flag == 'val':
         args.range = [0, 206]
+    elif args.list_flag == 'train':
+        args.range = [0, 3888]
 
     run_inference(
         args,

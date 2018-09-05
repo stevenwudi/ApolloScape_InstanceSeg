@@ -271,13 +271,13 @@ def bbox_transform_pytorch_out(boxes, im_scale, device_id):
         intrinsic_vect = np.array(cfg.TRANS_HEAD.CAMERA_INTRINSIC)
         intrinsic_vect *= im_scale
 
-        pred_boxes[:, 0::4] -= intrinsic_vect[2]
-        pred_boxes[:, 0::4] /= intrinsic_vect[0]
-        pred_boxes[:, 1::4] -= intrinsic_vect[3]
-        pred_boxes[:, 1::4] /= intrinsic_vect[1]
+        pred_boxes[:, 0] -= intrinsic_vect[2]
+        pred_boxes[:, 0] /= intrinsic_vect[0]
+        pred_boxes[:, 1] -= intrinsic_vect[3]
+        pred_boxes[:, 1] /= intrinsic_vect[1]
 
-        pred_boxes[:, 2::4] /= intrinsic_vect[0]
-        pred_boxes[:, 3::4] /= intrinsic_vect[1]
+        pred_boxes[:, 2] /= intrinsic_vect[0]
+        pred_boxes[:, 3] /= intrinsic_vect[1]
     else:
         im_shape_max = np.array([2710, 3384])
         im_shape = im_scale * im_shape_max
@@ -304,6 +304,7 @@ class roi_trans_head(nn.Module):
         self.dim_in = dim_in
         self.roi_xform = roi_xform_func
         self.spatial_scale = spatial_scale
+
         hidden_dim_1 = cfg.CAR_CLS.MLP_HEAD_DIM
         hidden_dim_2 = cfg.TRANS_HEAD.MLP_HEAD_DIM
         self.dim_out = cfg.TRANS_HEAD.MLP_HEAD_DIM + hidden_dim_2
