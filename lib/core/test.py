@@ -94,37 +94,42 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
         cls_segms = None
 
     # Further head for 3d car pose estimation
-    if cfg.MODEL.CAR_CLS_HEAD_ON and boxes.shape[0] > 0:
-        timers['im_car_cls'].tic()
-        if cfg.TEST.CAR_CLS_AUG.ENABLED:
-            raise Exception('Not implemented')
-        else:
-            car_cls_score, car_cls, euler_angle = im_car_cls(model, im_scale, boxes, blob_conv)
-        timers['im_car_cls'].toc()
-
+    if cfg.TRANS_HEAD.INPUT_TRIPLE_HEAD and boxes.shape[0] > 0:
+        timers['triple_head'].tic()
+        car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head(model, im_scale, boxes, blob_conv)
+        timers['triple_head'].toc()
     else:
-        car_cls = None
-        euler_angle = None
-
-    # Trans head for 3d car translation (pose) estimation:
-
-    if cfg.MODEL.TRANS_HEAD_ON and boxes.shape[0] > 0:
-        timers['im_car_trans'].tic()
-        if cfg.TEST.CAR_CLS_AUG.ENABLED:
-            raise Exception('Not implemented')
-        else:
-            device_id = blob_conv[0].get_device()
-            if cfg.TRANS_HEAD.INPUT_CONV_BODY:
-                car_trans_pred = im_car_trans_conv_body(model, im_scale, boxes, blob_conv, device_id)
+        if cfg.MODEL.CAR_CLS_HEAD_ON and boxes.shape[0] > 0:
+            timers['im_car_cls'].tic()
+            if cfg.TEST.CAR_CLS_AUG.ENABLED:
+                raise Exception('Not implemented')
             else:
-                car_trans_pred = im_car_trans(model, im_scale, boxes, device_id)
-        timers['im_car_trans'].toc()
-    elif boxes.shape[0] > 0:
-        # we use geometric method ###
-        car_trans_pred = im_car_trans_geometric(dataset, boxes, euler_angle, car_cls, im_scale=1.0)
-        timers['im_car_trans'].toc()
-    else:
-        car_trans_pred = None
+                car_cls_score, car_cls, euler_angle = im_car_cls(model, im_scale, boxes, blob_conv)
+            timers['im_car_cls'].toc()
+
+        else:
+            car_cls = None
+            euler_angle = None
+
+        # Trans head for 3d car translation (pose) estimation:
+
+        if cfg.MODEL.TRANS_HEAD_ON and boxes.shape[0] > 0:
+            timers['im_car_trans'].tic()
+            if cfg.TEST.CAR_CLS_AUG.ENABLED:
+                raise Exception('Not implemented')
+            else:
+                device_id = blob_conv[0].get_device()
+                if cfg.TRANS_HEAD.INPUT_CONV_BODY:
+                    car_trans_pred = im_car_trans_conv_body(model, im_scale, boxes, blob_conv, device_id)
+                else:
+                    car_trans_pred = im_car_trans(model, im_scale, boxes, device_id)
+            timers['im_car_trans'].toc()
+        elif boxes.shape[0] > 0:
+            # we use geometric method ###
+            car_trans_pred = im_car_trans_geometric(dataset, boxes, euler_angle, car_cls, im_scale=1.0)
+            timers['im_car_trans'].toc()
+        else:
+            car_trans_pred = None
 
     if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
         timers['im_detect_keypoints'].tic()
@@ -428,6 +433,47 @@ def im_car_cls(model, im_scale, boxes, blob_conv):
     # euler_angle[:, 2] = np.clip(euler_angle[:, 2], cfg.CAR_CLS.ROT_MIN[2], cfg.CAR_CLS.ROT_MAX[2])
 
     return car_cls_score, car_cls, euler_angle
+
+
+def triple_head(model, im_scale, boxes, blob_conv):
+    """Infer car class with translation and rotation all together
+    This function must be called after im_detect_bbox as it assumes that the workspace is already populated
+    with the necessary blobs.
+
+    Arguments:
+        model (DetectionModelHelper): the detection model to use
+        im_scale (list): image blob scales as returned by im_detect_bbox
+        boxes (ndarray): R x 4 array of bounding box detections (e.g., as
+            returned by im_detect_bbox)
+        blob_conv (Variable): base features from the backbone network.
+
+    Returns:
+        pred_masks (ndarray): R x 1 array of car class vector output by the network
+    """
+
+    inputs = {'rois': _get_rois_blob(boxes, im_scale)}
+
+    # Add multi-level rois for FPN
+    if cfg.FPN.MULTILEVEL_ROIS:
+        _add_multilevel_rois_for_test(inputs, 'rois')
+
+    car_cls_score, car_cls, rot_pred, car_cls_feat = model.module.car_cls_net(blob_conv, inputs)
+    car_cls_score = car_cls_score.data.cpu().numpy().squeeze()
+    car_cls = car_cls.data.cpu().numpy().squeeze()
+    rot_pred = rot_pred.data.cpu().numpy().squeeze()
+
+    # The following two lines are not necessary if our network output already normalises the output
+    norm = np.linalg.norm(rot_pred, axis=1)
+    rot_pred_norm = rot_pred / norm[:, None]
+
+    # normalise the unit quaternion here
+    euler_angle = np.array([quaternion_to_euler_angle(x) for x in rot_pred_norm])
+
+    device_id = blob_conv[0].get_device()
+    car_trans_pred = model.module.car_trans_triple(boxes, im_scale, car_cls_feat, device_id)
+    car_trans_pred = car_trans_pred.data.cpu().numpy().squeeze()
+
+    return car_cls_score, car_cls, euler_angle, car_trans_pred
 
 
 def im_car_trans(model, im_scale, boxes, device_id):

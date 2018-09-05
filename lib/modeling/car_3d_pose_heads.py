@@ -177,8 +177,9 @@ def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0)):
     """
 
     device_id = deltas.get_device()
-
-    boxes = Variable(torch.from_numpy(rois[:, 1:].astype('float32'))).cuda(device_id)
+    im_scale = im_info[0][-1]
+    im_scale_np = im_scale.numpy()
+    boxes = Variable(torch.from_numpy((rois[:, 1:]/im_scale_np).astype('float32'))).cuda(device_id)
     weights = Variable(torch.from_numpy(np.array(weights).astype('float32'))).cuda(device_id)
 
     widths = boxes[:, 2] - boxes[:, 0] + 1.0
@@ -199,7 +200,6 @@ def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0)):
 
     pred_ctr_x = dx * widths[:, np.newaxis] + ctr_x[:, np.newaxis]
     pred_ctr_y = dy * heights[:, np.newaxis] + ctr_y[:, np.newaxis]
-
     pred_w = torch.exp(dw) * widths[:, np.newaxis]
     pred_h = torch.exp(dh) * heights[:, np.newaxis]
 
@@ -215,10 +215,7 @@ def bbox_transform_pytorch(rois, deltas, im_info, weights=(1.0, 1.0, 1.0, 1.0)):
     pred_boxes[:, 3::4] = pred_h
 
     if cfg.TRANS_HEAD.IPUT_NORM_BY_INTRINSIC:
-        im_scale = im_info[0][-1]
         intrinsic_vect = np.array(cfg.TRANS_HEAD.CAMERA_INTRINSIC)
-        intrinsic_vect *= im_scale
-
         pred_boxes[:, 0::4] -= intrinsic_vect[2]
         pred_boxes[:, 0::4] /= intrinsic_vect[0]
         pred_boxes[:, 1::4] -= intrinsic_vect[3]
@@ -269,8 +266,7 @@ def bbox_transform_pytorch_out(boxes, im_scale, device_id):
     # Normalise box: NOT DONE properly yet! Hard coded
     if cfg.TRANS_HEAD.IPUT_NORM_BY_INTRINSIC:
         intrinsic_vect = np.array(cfg.TRANS_HEAD.CAMERA_INTRINSIC)
-        intrinsic_vect *= im_scale
-
+        # intrinsic_vect *= im_scale   # The box are normalised already to scale 1
         pred_boxes[:, 0] -= intrinsic_vect[2]
         pred_boxes[:, 0] /= intrinsic_vect[0]
         pred_boxes[:, 1] -= intrinsic_vect[3]

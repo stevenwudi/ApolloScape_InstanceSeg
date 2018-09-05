@@ -868,7 +868,7 @@ __C.TRANS_HEAD.LOSS = 'MSE'   # ['MSE', 'L1', 'HUBER']
 __C.TRANS_HEAD.TRANS_HUBER_THRESHOLD = 2.8
 
 # Loss mulitplication coefficience
-__C.TRANS_HEAD.LOSS_BETA = 0.01
+__C.TRANS_HEAD.TRANS_LOSS_BETA = 0.01
 
 # Input norm by camera intrinsic
 __C.TRANS_HEAD.IPUT_NORM_BY_INTRINSIC = True

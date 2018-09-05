@@ -1,7 +1,7 @@
 import argparse
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-#os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import sys
 import pickle
@@ -69,13 +69,15 @@ def parse_args():
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
     #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step61312.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step72750.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-00-18-30_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep05-23-41-44_N606-TITAN32_step/ckpt/model_step1196.pth', help='checkpoint path to load')
+
 
     #parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
-    parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
+    parser.add_argument('--ckpt_ignore_head', default=[], help='heads parameters will be ignored during loading')
 
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
@@ -377,12 +379,15 @@ def main():
 
                 net_outputs['losses']['loss_car_cls'] *= cfg.CAR_CLS.CAR_CLS_LOSS_BETA
                 net_outputs['losses']['loss_rot'] *= cfg.CAR_CLS.ROT_LOSS_BETA
+                if cfg.MODEL.TRANS_HEAD_ON:
+                    net_outputs['losses']['loss_trans'] *= cfg.TRANS_HEAD.TRANS_LOSS_BETA
+
                 training_stats.UpdateIterStats_car_3d(net_outputs)
+
                 # start training
                 # loss_car_cls: 2.233790, loss_rot: 0.296853, loss_trans: ~100
                 loss = net_outputs['losses']['loss_car_cls'] + net_outputs['losses']['loss_rot']
                 if cfg.MODEL.TRANS_HEAD_ON:
-                    net_outputs['losses']['loss_trans'] *= warmup_factor_trans
                     loss += net_outputs['losses']['loss_trans']
                 if cfg.MODEL.LOSS_3D_2D_ON:
                     loss += net_outputs['losses']['UV_projection_loss']

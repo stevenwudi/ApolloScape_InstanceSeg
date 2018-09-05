@@ -458,7 +458,10 @@ class Generalized_RCNN(nn.Module):
         """For inference"""
         car_cls_feat = self.car_cls_Head(blob_conv, rpn_blob)
         car_cls_score, car_cls, rot_pred = self.car_cls_Outs(car_cls_feat)
-        return car_cls_score, car_cls, rot_pred
+        if cfg.TRANS_HEAD.INPUT_TRIPLE_HEAD:
+            return car_cls_score, car_cls, rot_pred, car_cls_feat
+        else:
+            return car_cls_score, car_cls, rot_pred
 
     @check_inference
     def car_trans_net(self, bbox_pred, im_scale, device_id):
@@ -468,6 +471,17 @@ class Generalized_RCNN(nn.Module):
         # Build translation head heres from the bounding box
         car_trans_feat = self.car_trans_Head(pred_boxes)
         car_trans_pred = self.car_trans_Outs(car_trans_feat)
+
+        return car_trans_pred
+
+    @check_inference
+    def car_trans_triple(self, bbox_pred, im_scale, car_cls_feat, device_id):
+        """For inference"""
+        pred_boxes = car_3d_pose_heads.bbox_transform_pytorch_out(bbox_pred, im_scale, device_id)
+
+        # Build translation head heres from the bounding box
+        car_trans_feat = self.car_trans_Head(pred_boxes)
+        car_trans_pred = self.car_trans_Outs(car_trans_feat, car_cls_feat)
 
         return car_trans_pred
 
