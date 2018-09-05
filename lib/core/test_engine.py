@@ -477,7 +477,7 @@ def test_net_Car3D(
                 vis_utils.vis_one_image_eccv2018_car_3d(
                     im[:, :, ::-1],
                     '{:d}_{:s}'.format(i, im_name),
-                    os.path.join(output_dir, 'vis'),
+                    os.path.join(output_dir, 'vis_'+args.list_flag),
                     boxes=cls_boxes_i,
                     car_cls_prob=car_cls_i,
                     euler_angle=euler_angle_i,
