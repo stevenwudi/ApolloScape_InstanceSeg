@@ -59,14 +59,6 @@ TRANS_HEAD:
   NORMALISE: False
   IPUT_NORM_BY_INTRINSIC: True
   CAMERA_INTRINSIC: (2304.54786556982, 2305.875668062, 1686.23787612802, 1354.98486439791)
-#ROT_HEAD:
-#  ROI_ROT_HEAD: 3d_pose_head.roi_car_cls_rot_head
-#  ROI_XFORM_METHOD: RoIAlign
-#  ROI_XFORM_RESOLUTION: 14  # default 7
-#  ROI_XFORM_SAMPLING_RATIO: 2  # default 0
-#  DILATION: 1  # default 2
-#  CONV_INIT: MSRAFill  # default GaussianFill
-#  CLS_SPECIFIC_ROT: False # Use class specific mask predictions if True (otherwise use class agnostic rot predictions)
 
 MRCNN:
   ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs
