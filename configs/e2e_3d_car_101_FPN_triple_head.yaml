@@ -70,7 +70,7 @@ TRAIN:
 #  SCALES: (1600, 2000)  # If it's 0, means that we don't resize it
 #  MAX_SIZE: 2000
   SCALES: (2000, 2710)  # 2710 is the max size for shortest side. If it's 0, means that we don't resize it
-  MAX_SIZE: 3000 #3384  # max size for longest side
+  MAX_SIZE: 2300 #3384  # max size for longest side
   RPN_PRE_NMS_TOP_N: 2000  # Per FPN level, 2000 default
   CE_FINETUNE_WIGHT: ( 1,  1.20,    6.4,         14.35,      1.   , 2.48,   1.53427976,    4.088)
   SNAPSHOT_ITERS: 400
@@ -82,9 +82,9 @@ TRAIN:
        25.85,  8.63,  6.49,  4.13,  2.6 ,  6.3 , 10.84]  # Find tune car according to it's appearance
   CAR_MODELS: [2,  6,  7,  8,  9, 12, 14, 16, 18, 19, 20, 23, 25, 27, 28, 31, 32, 35, 37,  40, 43, 46, 47, 48, 50, 51, 54, 56, 60, 61, 66, 70, 71, 76]
 
-  FREEZE_CONV_BODY: True
-  FREEZE_RPN: True
-  FREEZE_FPN: True
+  FREEZE_CONV_BODY: False
+  FREEZE_RPN: False
+  FREEZE_FPN: False
 
 TEST:
   SCORE_THRESH: 0.1

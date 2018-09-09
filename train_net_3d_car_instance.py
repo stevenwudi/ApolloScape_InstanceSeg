@@ -73,7 +73,7 @@ def parse_args():
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step61312.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step72750.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-00-18-30_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep05-23-41-44_N606-TITAN32_step/ckpt/model_step1196.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep06-00-38-11_N606-TITAN32_step/ckpt/model_step79999.pth', help='checkpoint path to load')
 
 
     #parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
@@ -391,6 +391,9 @@ def main():
                     loss += net_outputs['losses']['loss_trans']
                 if cfg.MODEL.LOSS_3D_2D_ON:
                     loss += net_outputs['losses']['UV_projection_loss']
+                if not cfg.TRAIN.FREEZE_CONV_BODY and not cfg.TRAIN.FREEZE_RPN and not cfg.TRAIN.FREEZE_FPN:
+                    loss += net_outputs['total_loss_conv']
+
                 loss.backward()
             optimizer.step()
             training_stats.IterToc()

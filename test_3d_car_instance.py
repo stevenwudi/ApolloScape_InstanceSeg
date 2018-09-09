@@ -30,7 +30,8 @@ def parse_args():
 
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-12-54-39_n606_step/ckpt/model_step39899.pth', help='checkpoint path to load')
     #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step80464.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep05-23-41-44_N606-TITAN32_step/ckpt/model_step1196.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep05-23-41-44_N606-TITAN32_step/ckpt/model_step1196.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep05-12-59-14_n606_step/ckpt/model_step79999.pth', help='checkpoint path to load')
 
     parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train/')
 
@@ -38,7 +39,7 @@ def parse_args():
     parser.add_argument('--output_dir', help='output directory to save the testing results. If not provided defaults to [args.load_ckpt|args.load_detectron]/../test.')
     parser.add_argument('--set', dest='set_cfgs', help='set config keys, will overwrite config in the cfg_file. See lib/core/config.py for all options', default=[], nargs='*')
     parser.add_argument('--multi-gpu-testing', help='using multiple gpus for inference', default=False, action='store_true')
-    parser.add_argument('--vis', default=False,  dest='vis', help='visualize detections', action='store_true')
+    parser.add_argument('--vis', default=True,  dest='vis', help='visualize detections', action='store_true')
     parser.add_argument('--list_flag', default='train', help='Choosing between [val, test]')
     parser.add_argument('--iou_ignore_threshold', default=1.0, help='Filter out by this iou')
 

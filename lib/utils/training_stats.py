@@ -122,7 +122,18 @@ class TrainingStats(object):
             model_out['losses'][name] = loss
             self.smoothed_losses[name].AddValue(loss_data)
 
-        model_out['total_loss'] = total_loss  # Add the total loss for back propagation
+        total_loss_conv = 0
+        for k, loss in model_out['losses'].items():
+            if k not in loss_names:
+                assert loss.shape[0] == cfg.NUM_GPUS
+                loss = loss.mean(dim=0, keepdim=True)
+                total_loss_conv += loss
+                loss_data = loss.data[0]
+                model_out['losses'][k] = loss
+                self.smoothed_losses[k].AddValue(loss_data)
+
+        model_out['total_loss'] = total_loss + total_loss_conv # Add the total loss for back propagation
+        model_out['total_loss_conv'] = total_loss_conv  # Add the total loss for back propagation
         self.smoothed_total_loss.AddValue(total_loss.data[0])
 
         for k, metric in model_out['metrics'].items():
