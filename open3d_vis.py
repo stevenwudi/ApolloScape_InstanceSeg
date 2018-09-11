@@ -22,8 +22,9 @@ def parse_args():
                         default=r'D:\Github\ApolloScape_InstanceSeg\Outputs\e2e_3d_car_101_FPN_triple_head\Sep09-23-42-21_N606-TITAN32_step')
     parser.add_argument('--list_flag', default='val', help='Choosing between [val, test]')
     parser.add_argument('--iou_ignore_threshold', default=1.0, help='Filter out by this iou')
-    parser.add_argument('--vis_num', default=60, help='Choosing which image to view')
+    parser.add_argument('--vis_num', default=160, help='Choosing which image to view')
     parser.add_argument('--criterion_num', default=0, help='[0,1,2,...9]')
+    parser.add_argument('--dtScores', default=0.9, help='Detection Score for visualisation')
 
     return parser.parse_args()
 
@@ -105,6 +106,7 @@ def open_3d_vis(args, output_dir):
     print(image_id)
     # We only draw the most loose constraint here
     dtMatches = evalImgs['dtMatches'][0]
+    dtScores = evalImgs['dtScores']
     mesh_car_all = []
     # We also save road surface
     xmin, xmax, ymin, ymax, zmin, zmax = np.inf, -np.inf, np.inf, -np.inf, np.inf, -np.inf
@@ -124,25 +126,26 @@ def open_3d_vis(args, output_dir):
         mesh_car_all.append(mesh_car)
 
     for i, car in enumerate(det_3d_metric._dts[image_id]):
-        car_model = car_models[car['car_id']]
-        R = euler_angles_to_rotation_matrix(car['pose'][:3])
-        vertices = np.matmul(R, car_model['vertices'].T) + np.asarray(car['pose'][3:])[:, None]
-        mesh_car = TriangleMesh()
-        mesh_car.vertices = Vector3dVector(vertices.T)
-        mesh_car.triangles = Vector3iVector(car_model['faces'] - 1)
-        # Computing normal
-        mesh_car.compute_vertex_normals()
-        if dtMatches[i] != 0:
-            # if it is a true positive, we render it as green
-            mesh_car.paint_uniform_color([0, 1, 0])
-        else:
-            # else we render it as red
-            mesh_car.paint_uniform_color([1, 0, 0])
-        mesh_car_all.append(mesh_car)
+        if dtScores[i] > args.dtScores:
+            car_model = car_models[car['car_id']]
+            R = euler_angles_to_rotation_matrix(car['pose'][:3])
+            vertices = np.matmul(R, car_model['vertices'].T) + np.asarray(car['pose'][3:])[:, None]
+            mesh_car = TriangleMesh()
+            mesh_car.vertices = Vector3dVector(vertices.T)
+            mesh_car.triangles = Vector3iVector(car_model['faces'] - 1)
+            # Computing normal
+            mesh_car.compute_vertex_normals()
+            if dtMatches[i] != 0:
+                # if it is a true positive, we render it as green
+                mesh_car.paint_uniform_color([0, 1, 0])
+            else:
+                # else we render it as red
+                mesh_car.paint_uniform_color([1, 0, 0])
+            mesh_car_all.append(mesh_car)
 
-        # Draw the road surface here
-        # x = np.linspace(xmin, xmax, 100)
-        #  every 0.1 meter
+            # Draw the road surface here
+            # x = np.linspace(xmin, xmax, 100)
+            #  every 0.1 meter
 
     xyz = get_road_surface_xyz(xmin, xmax, ymin, ymax, zmin, zmax)
     # Pass xyz to Open3D.PointCloud and visualize
