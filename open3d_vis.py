@@ -22,9 +22,9 @@ def parse_args():
                         default=r'D:\Github\ApolloScape_InstanceSeg\Outputs\e2e_3d_car_101_FPN_triple_head\Sep09-23-42-21_N606-TITAN32_step')
     parser.add_argument('--list_flag', default='val', help='Choosing between [val, test]')
     parser.add_argument('--iou_ignore_threshold', default=1.0, help='Filter out by this iou')
-    parser.add_argument('--vis_num', default=160, help='Choosing which image to view')
+    parser.add_argument('--vis_num', default=50, help='Choosing which image to view')
     parser.add_argument('--criterion_num', default=0, help='[0,1,2,...9]')
-    parser.add_argument('--dtScores', default=0.9, help='Detection Score for visualisation')
+    parser.add_argument('--dtScores', default=0.5, help='Detection Score for visualisation')
 
     return parser.parse_args()
 
@@ -61,8 +61,8 @@ def update_road_surface(xmin, xmax, ymin, ymax, zmin, zmax, vertices):
 
 
 def get_road_surface_xyz(xmin, xmax, ymin, ymax, zmin, zmax):
-    x = np.linspace(xmin, xmax, int((xmax - xmin) / 0.1))
-    z = np.linspace(zmin, zmax, int((zmax - zmin) / 0.1))
+    x = np.linspace(xmin, xmax, int((xmax - xmin) / 0.3))
+    z = np.linspace(zmin, zmax, int((zmax - zmin) / 0.3))
     mesh_x, mesh_z = np.meshgrid(x, z)
     mesh_y = np.ones(np.size(mesh_x)) * ymax
     xyz = np.zeros((np.size(mesh_x), 3))
@@ -105,7 +105,7 @@ def open_3d_vis(args, output_dir):
     image_id = evalImgs['image_id']
     print(image_id)
     # We only draw the most loose constraint here
-    dtMatches = evalImgs['dtMatches'][0]
+    gtMatches = evalImgs['gtMatches'][0]
     dtScores = evalImgs['dtScores']
     mesh_car_all = []
     # We also save road surface
@@ -135,7 +135,7 @@ def open_3d_vis(args, output_dir):
             mesh_car.triangles = Vector3iVector(car_model['faces'] - 1)
             # Computing normal
             mesh_car.compute_vertex_normals()
-            if dtMatches[i] != 0:
+            if car['id'] in gtMatches:
                 # if it is a true positive, we render it as green
                 mesh_car.paint_uniform_color([0, 1, 0])
             else:
