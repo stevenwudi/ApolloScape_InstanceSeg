@@ -96,17 +96,16 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
     # Further head for 3d car pose estimation
     if cfg.TRANS_HEAD.INPUT_TRIPLE_HEAD and boxes.shape[0] > 0:
         timers['triple_head'].tic()
-        car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head(model, im_scale, boxes, blob_conv)
+        if cfg.TEST.CAR_CLS_AUG.ENABLED:
+            car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head_aug(model, im, im_scale, boxes, blob_conv)
+        else:
+            car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head(model, im_scale, boxes, blob_conv)
         timers['triple_head'].toc()
     else:
         if cfg.MODEL.CAR_CLS_HEAD_ON and boxes.shape[0] > 0:
             timers['im_car_cls'].tic()
-            if cfg.TEST.CAR_CLS_AUG.ENABLED:
-                raise Exception('Not implemented')
-            else:
-                car_cls_score, car_cls, euler_angle = im_car_cls(model, im_scale, boxes, blob_conv)
+            car_cls_score, car_cls, euler_angle = im_car_cls(model, im_scale, boxes, blob_conv)
             timers['im_car_cls'].toc()
-
         else:
             car_cls = None
             euler_angle = None
@@ -448,7 +447,7 @@ def triple_head(model, im_scale, boxes, blob_conv):
         blob_conv (Variable): base features from the backbone network.
 
     Returns:
-        pred_masks (ndarray): R x 1 array of car class vector output by the network
+        car_cls_score, car_cls, euler_angle, car_trans_pred
     """
 
     inputs = {'rois': _get_rois_blob(boxes, im_scale)}
@@ -457,10 +456,23 @@ def triple_head(model, im_scale, boxes, blob_conv):
     if cfg.FPN.MULTILEVEL_ROIS:
         _add_multilevel_rois_for_test(inputs, 'rois')
 
+    # Car cls and rot head
     car_cls_score, car_cls, rot_pred, car_cls_feat = model.module.car_cls_net(blob_conv, inputs)
-    car_cls_score = car_cls_score.data.cpu().numpy().squeeze()
-    car_cls = car_cls.data.cpu().numpy().squeeze()
-    rot_pred = rot_pred.data.cpu().numpy().squeeze()
+    # Trans head
+    device_id = blob_conv[0].get_device()
+    car_trans_pred = model.module.car_trans_triple(boxes, im_scale, car_cls_feat, device_id)
+
+    # Save them into cpu
+    car_trans_pred = car_trans_pred.data.cpu().numpy()
+    car_cls_score = car_cls_score.data.cpu().numpy()
+    car_cls = car_cls.data.cpu().numpy()
+    rot_pred = rot_pred.data.cpu().numpy()
+    if rot_pred.shape[0] > 1:
+        # there is more than one
+        car_cls_score = car_cls_score.squeeze()
+        car_cls = car_cls.squeeze()
+        rot_pred = rot_pred.squeeze()
+        car_trans_pred = car_trans_pred.squeeze()
 
     # The following two lines are not necessary if our network output already normalises the output
     norm = np.linalg.norm(rot_pred, axis=1)
@@ -468,10 +480,6 @@ def triple_head(model, im_scale, boxes, blob_conv):
 
     # normalise the unit quaternion here
     euler_angle = np.array([quaternion_to_euler_angle(x) for x in rot_pred_norm])
-
-    device_id = blob_conv[0].get_device()
-    car_trans_pred = model.module.car_trans_triple(boxes, im_scale, car_cls_feat, device_id)
-    car_trans_pred = car_trans_pred.data.cpu().numpy().squeeze()
 
     return car_cls_score, car_cls, euler_angle, car_trans_pred
 
@@ -560,6 +568,100 @@ def im_detect_mask(model, im_scale, boxes, blob_conv):
         pred_masks = pred_masks.reshape([-1, 1, M, M])
 
     return pred_masks
+
+
+def triple_head_aug(model, im, im_scale, boxes, blob_conv):
+    """Performs mask detection with test-time augmentations.
+
+    Arguments:
+        model (DetectionModelHelper): the detection model to use
+        boxes (ndarray): R x 4 array of bounding boxes
+        im_scale (list): image blob scales as returned by im_detect_bbox
+        blob_conv (Tensor): base features from the backbone network.
+
+    Returns:
+        car_cls_score, car_cls, euler_angle, car_trans_pred
+        masks (ndarray): R x K x M x M array of class specific soft masks
+    """
+    assert not cfg.TEST.MASK_AUG.SCALE_SIZE_DEP, \
+        'Size dependent scaling not implemented'
+
+    # Collect lists computed under different transformations
+    car_cls_score_ts, car_cls_ts, euler_angle_ts, car_trans_pred_ts = [], [], [], []
+
+    # Compute list for the original image (identity transform)
+    car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head(model, im_scale, boxes, blob_conv)
+    car_cls_score_ts.append(car_cls_score)
+    car_cls_ts.append(car_cls)
+    euler_angle_ts.append(euler_angle)
+    car_trans_pred_ts.append(car_trans_pred)
+
+    # Perform mask detection on the horizontally flipped image
+    if cfg.TEST.CAR_CLS_AUG.H_FLIP:
+        # masks_hf = im_detect_mask_hflip(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes)
+        # masks_ts.append(masks_hf)
+        car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head_hflip(model, im,  cfg.TEST.SCALE, boxes, cfg.TEST.MAX_SIZE)
+        car_cls_score_ts.append(car_cls_score)
+        car_cls_ts.append(car_cls)
+        euler_angle_ts.append(euler_angle)
+        car_trans_pred_ts.append(car_trans_pred)
+
+    # Compute detections at different scales
+    for scale in cfg.TEST.CAR_CLS_AUG.SCALES:
+        max_size = cfg.TEST.CAR_CLS_AUG.MAX_SIZE
+        car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head_scale(model, im, scale, max_size, boxes)
+        car_cls_score_ts.append(car_cls_score)
+        car_cls_ts.append(car_cls)
+        euler_angle_ts.append(euler_angle)
+        car_trans_pred_ts.append(car_trans_pred)
+
+        if cfg.TEST.CAR_CLS_AUG.SCALE_H_FLIP:
+            car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head_scale(model, im, scale, max_size, boxes, hflip=True)
+            car_cls_score_ts.append(car_cls_score)
+            car_cls_ts.append(car_cls)
+            euler_angle_ts.append(euler_angle)
+            car_trans_pred_ts.append(car_trans_pred)
+
+    # Combine the predicted soft masks
+    if cfg.TEST.MASK_AUG.HEUR == 'SOFT_AVG':
+        car_cls_score_c = np.mean(car_cls_score_ts, axis=0)
+        car_cls_c = np.mean(car_cls_ts, axis=0)
+        euler_angle_c = np.mean(euler_angle_ts, axis=0)
+        car_trans_pred_c = np.mean(car_trans_pred_ts, axis=0)
+    else:
+        raise NotImplementedError('Heuristic {} not supported'.format(cfg.TEST.MASK_AUG.HEUR))
+
+    return car_cls_score_c, car_cls_c, euler_angle_c, car_trans_pred_c
+
+
+def triple_head_scale(model, im, target_scale, target_max_size, boxes, hflip=False):
+    """Computes masks at the given scale."""
+    if hflip:
+        car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head_hflip(model, im, target_scale, boxes, target_max_size)
+    else:
+        blob_conv, im_scale = im_conv_body_only(model, im, target_scale, target_max_size)
+        car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head(model, im_scale, boxes, blob_conv)
+
+    return car_cls_score, car_cls, euler_angle, car_trans_pred
+
+
+def triple_head_hflip(model, im, im_scale, boxes, target_max_size):
+    """Performs mask detection on the horizontally flipped image.
+    Function signature is the same as for im_detect_mask_aug.
+    """
+    # Compute the masks for the flipped image
+    im_hf = im[:, ::-1, :]
+    boxes_hf = box_utils.flip_boxes(boxes, im.shape[1])
+
+    blob_conv, im_scale = im_conv_body_only(model, im_hf, im_scale, target_max_size)
+    car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head(model, im_scale, boxes_hf, blob_conv)
+
+    # Invert the predicted soft masks
+    # Only should the euler angle changed here
+
+    car_trans_pred[:, 0] = -car_trans_pred[:, 0]
+    euler_angle[:, 1] = -euler_angle[:, 1]
+    return car_cls_score, car_cls, euler_angle, car_trans_pred
 
 
 def im_detect_mask_aug(model, im, boxes, im_scale, blob_conv):

@@ -525,19 +525,24 @@ def write_pose_to_json(im_name, output_dir, boxes, car_cls_prob, euler_angle, tr
 
         if class_string == 'car':
             # filter out by ignored_mask_binary
-            dt_mask = masks[:, :, i]
-            dt_area = int(dt_mask.sum())
-            iou_mask = dt_mask * ignored_mask_binary
-            iou = np.sum(iou_mask) / dt_area
-            if iou <= iou_ignore_threshold:
-                car_info = dict()
-                car_info["car_id"] = int(car_model_i)
-                car_info["pose"] = [float(x) for x in euler_angle_i] + [float(x) for x in trans_pred_i]
-                car_info["area"] = dt_area
-                car_info["score"] = float(score)
-                car_list.append(car_info)
+            car_info = dict()
+            car_info["car_id"] = int(car_model_i)
+            car_info["pose"] = [float(x) for x in euler_angle_i] + [float(x) for x in trans_pred_i]
+            # We use rectangle area
+            car_info["area"] = int(areas[i])
+            car_info["score"] = float(score)
+            if iou_ignore_threshold:
+                if iou <= iou_ignore_threshold:
+                    dt_mask = masks[:, :, i]
+                    dt_area = int(dt_mask.sum())
+                    iou_mask = dt_mask * ignored_mask_binary
+                    iou = np.sum(iou_mask) / dt_area
+                    car_info["area"] = dt_area
+                    car_list.append(car_info)
+                else:
+                    print('This mask has been ignored')
             else:
-                print('This mask has been ignored')
+                car_list.append(car_info)
 
     with open(json_file, 'w') as outfile:
         json.dump(car_list, outfile, indent=4)

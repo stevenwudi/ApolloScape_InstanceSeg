@@ -306,6 +306,15 @@ __C.TEST.BBOX_AUG.ASPECT_RATIO_H_FLIP = False
 # ---------------------------------------------------------------------------- #
 __C.TEST.CAR_CLS_AUG = AttrDict()
 __C.TEST.CAR_CLS_AUG.ENABLED = False
+
+# Horizontal flip at the original scale (id transform)
+__C.TEST.CAR_CLS_AUG.H_FLIP = False
+# Each scale is the pixel size of an image's shortest side
+__C.TEST.CAR_CLS_AUG.SCALES = ()
+# Max pixel size of the longer side
+__C.TEST.CAR_CLS_AUG.MAX_SIZE = 4000
+# Horizontal flip at each scale
+__C.TEST.CAR_CLS_AUG.SCALE_H_FLIP = False
 # ---------------------------------------------------------------------------- #
 # Test-time augmentations for mask detection
 # See configs/test_time_aug/e2e_mask_rcnn_R-50-FPN_2x.yaml for an example

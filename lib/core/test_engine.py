@@ -401,7 +401,10 @@ def test_net_Car3D(
     else:
         json_dir = os.path.join(output_dir, 'json_'+args.list_flag)
 
-    json_dir += '_iou' + str(args.iou_ignore_threshold)
+    json_dir += '_iou_' + str(args.iou_ignore_threshold)
+    if not cfg.TEST.BBOX_AUG.ENABLED:
+        json_dir += '_single_scale'
+
     roidb = roidb
     for i, entry in enumerate(roidb):
         image_ids.append(entry['image'])
@@ -438,23 +441,19 @@ def test_net_Car3D(
                 ave_total_time = np.sum([t.average_time for t in timers.values()])
                 eta_seconds = ave_total_time * (num_images - i - 1)
                 eta = str(datetime.timedelta(seconds=int(eta_seconds)))
-                det_time = (
-                    timers['im_detect_bbox'].average_time +
-                    timers['im_detect_mask'].average_time +
-                    timers['im_car_cls'].average_time + timers['im_car_trans'].average_time
-                )
+                det_time = timers['im_detect_bbox'].average_time
+                triple_head_time = timers['triple_head'].average_time
                 misc_time = (
                     timers['misc_bbox'].average_time +
-                    timers['misc_mask'].average_time +
-                    timers['misc_keypoints'].average_time
+                    timers['misc_mask'].average_time
                 )
                 logger.info(
                     (
                         'im_detect: range [{:d}, {:d}] of {:d}: '
-                        '{:d}/{:d} {:.3f}s + {:.3f}s (eta: {})'
+                        '{:d}/{:d} det-time: {:.3f}s + triple-head-time: {:.3f}s + misc_time: {:.3f}s (eta: {})'
                     ).format(
                         start_ind + 1, end_ind, total_num_images, start_ind + i + 1,
-                        start_ind + num_images, det_time, misc_time, eta
+                        start_ind + num_images, det_time, triple_head_time, misc_time, eta
                     )
                 )
 

@@ -6,9 +6,9 @@ import os
 import pprint
 import sys
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import torch
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import _init_paths  # pylint: disable=unused-import
 from core.config import cfg, merge_cfg_from_file, merge_cfg_from_list, assert_and_infer_cfg
@@ -23,26 +23,34 @@ cv2.ocl.setUseOpenCL(False)
 def parse_args():
     """Parse in command line arguments"""
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
-    parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
+    ######################## cfg #####################
     parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head.yaml', help='Config file for training (and optionally testing)')
-
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-12-54-39_n606_step/ckpt/model_step39899.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step80464.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep05-23-41-44_N606-TITAN32_step/ckpt/model_step1196.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep05-12-59-14_n606_step/ckpt/model_step79999.pth', help='checkpoint path to load')
-
+    ######################## ckpt #####################
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep09-23-42-21_N606-TITAN32_step/ckpt/model_step56534.pth', help='checkpoint path to load')
+    """
+     /media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep09-23-42-21_N606-TITAN32_step/ckpt/model_step56534.pth
+     Average Precision  (AP) @[ Criteria=c0:c5     | area=   all | maxDets=100 ] = 0.034
+     Average Precision  (AP) @[ Criteria=c0        | area=   all | maxDets=100 ] = 0.070
+     Average Precision  (AP) @[ Criteria=c3        | area=   all | maxDets=100 ] = 0.050
+     Average Precision  (AP) @[ Criteria=c0:c5     | area= small | maxDets=100 ] = 0.004
+     Average Precision  (AP) @[ Criteria=c0:c5     | area=medium | maxDets=100 ] = 0.017
+     Average Precision  (AP) @[ Criteria=c0:c5     | area= large | maxDets=100 ] = 0.137
+     Average Recall     (AR) @[ Criteria=c0:c5     | area=   all | maxDets=  1 ] = 0.033
+     Average Recall     (AR) @[ Criteria=c0:c5     | area=   all | maxDets= 10 ] = 0.059
+     Average Recall     (AR) @[ Criteria=c0:c5     | area=   all | maxDets=100 ] = 0.062
+     Average Recall     (AR) @[ Criteria=c0:c5     | area= small | maxDets=100 ] = 0.009
+     Average Recall     (AR) @[ Criteria=c0:c5     | area=medium | maxDets=100 ] = 0.043
+     Average Recall     (AR) @[ Criteria=c0:c5     | area= large | maxDets=100 ] = 0.217
+    """
+    parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
     parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train/')
-
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--output_dir', help='output directory to save the testing results. If not provided defaults to [args.load_ckpt|args.load_detectron]/../test.')
     parser.add_argument('--set', dest='set_cfgs', help='set config keys, will overwrite config in the cfg_file. See lib/core/config.py for all options', default=[], nargs='*')
     parser.add_argument('--multi-gpu-testing', help='using multiple gpus for inference', default=False, action='store_true')
-    parser.add_argument('--vis', default=True,  dest='vis', help='visualize detections', action='store_true')
-    parser.add_argument('--list_flag', default='train', help='Choosing between [val, test]')
-    parser.add_argument('--iou_ignore_threshold', default=1.0, help='Filter out by this iou')
-
+    parser.add_argument('--vis', default=False,  dest='vis', help='visualize detections', action='store_true')
+    parser.add_argument('--list_flag', default='val', help='Choosing between [val, test]')
+    parser.add_argument('--iou_ignore_threshold', default=None, help='Filter out by this iou')
     return parser.parse_args()
 
 
@@ -88,7 +96,10 @@ if __name__ == '__main__':
 
     # Wudi hard coded the following range
     if args.list_flag == 'test':
-        args.range = [0, 1041]
+        #args.range = [0, 1041]
+        #i = 7
+        #args.range = [i*125, (i+1)*125]
+        args.range = [1000, 1041]
     elif args.list_flag == 'val':
         args.range = [0, 206]
     elif args.list_flag == 'train':
