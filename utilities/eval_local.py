@@ -509,11 +509,6 @@ class Detect3DEval(object):
             raise Exception('no givem simType %s' % simType)
         self.stats, metric_names = summarize()
 
-        f = open(self.args.res_file, 'w')
-        for name, value in zip(metric_names, self.stats):
-            f.write('%s %.4f\n' % (name, value))
-        f.close()
-
     def __str__(self):
         self.summarize()
 

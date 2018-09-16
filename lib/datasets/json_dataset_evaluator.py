@@ -203,6 +203,19 @@ def _apolloscape_do_detection_eval(args, json_dataset, res_file, output_dir):
     return coco_eval
 
 
+def _car3d_do_detection_eval(args, json_dataset, res_file, output_dir):
+    coco_dt = json_dataset.Car3D.loadRes(str(res_file))
+    coco_gt = json_dataset.Car3D.loadGt(json_dataset.roidb,  args.range, 'boxes')
+    coco_eval = WAD_eval(args, coco_gt, coco_dt, 'bbox')
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    _log_detection_eval_metrics(json_dataset, coco_eval)
+    eval_file = os.path.join(output_dir, 'detection_results.pkl')
+    save_object(coco_eval, eval_file)
+    logger.info('Wrote json eval results to: {}'.format(eval_file))
+    return coco_eval
+
+
 def _apolloscape_do_segmentation_eval(args, json_dataset, res_file, output_dir):
     coco_dt = json_dataset.ApolloScape.loadRes(str(res_file))
     coco_gt = json_dataset.ApolloScape.loadGt(json_dataset.roidb, args.range, 'segms')
@@ -256,6 +269,8 @@ def evaluate_boxes_wad(json_dataset, all_boxes, output_dir, use_salt=True, clean
         coco_eval = _wad_do_detection_eval(args, json_dataset, res_file, output_dir)
     elif json_dataset.name == 'ApolloScape':
         coco_eval = _apolloscape_do_detection_eval(args, json_dataset, res_file, output_dir)
+    elif json_dataset.name == 'Car3D':
+        coco_eval = _car3d_do_detection_eval(args, json_dataset, res_file, output_dir)
     elif json_dataset.name.find('test') == -1:
         coco_eval = _do_detection_eval(json_dataset, res_file, output_dir)
     else:

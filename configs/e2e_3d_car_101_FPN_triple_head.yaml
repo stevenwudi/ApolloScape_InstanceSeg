@@ -2,7 +2,7 @@ MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.fpn_ResNet101_conv5_body
   FASTER_RCNN: True
-  MASK_ON: True
+  MASK_ON: False
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
   TRANS_HEAD_ON: True
@@ -114,9 +114,10 @@ TEST:
 
   CAR_CLS_AUG:
     ENABLED: True
-    H_FLIP: True
     SCALES: (1200, 1700, 2200) # we don't need 3384 because the first SCALE include it!
     MAX_SIZE: 3384
+    H_FLIP: False
+    SCALE_H_FLIP: False
 
   MASK_AUG:
     ENABLED: True

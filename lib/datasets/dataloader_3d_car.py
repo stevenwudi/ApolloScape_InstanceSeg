@@ -162,7 +162,8 @@ class Car3D(WAD_CVPR2018):
         :param: type      : boxes, or segms
         """
         print('Loading and preparing results...')
-        res = Car3D()
+        res = Car3D(self.data_dir)
+        res.dataset = dict()
         res.dataset['categories'] = copy.deepcopy(self.category_to_id_map)
         res.dataset['images'] = []
         anns = []
@@ -177,7 +178,8 @@ class Car3D(WAD_CVPR2018):
                     for id in range(len(entry['boxes'])):
                         ann = dict()
                         ann['image_id'] = entry['image']
-                        ann['category_id'] = self.contiguous_category_id_to_json_id[entry['gt_classes'][id]]
+                        #ann['category_id'] = self.contiguous_category_id_to_json_id[entry['gt_classes'][id]]
+                        ann['category_id'] = 33
                         bb = entry['boxes'][id]
                         x1, x2, y1, y2 = bb[0], bb[2], bb[1], bb[3]
                         w = x2 - x1
@@ -219,7 +221,8 @@ class Car3D(WAD_CVPR2018):
         :return: res (obj)         : result api object
         """
         print('Loading and preparing results...')
-        res = Car3D()
+        res = Car3D(self.data_dir)
+        res.dataset = dict()
         tic = time.time()
         if type(resFile) == str:
             anns = json.load(open(resFile))

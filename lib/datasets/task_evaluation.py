@@ -245,7 +245,7 @@ def _use_cityscapes_evaluator(dataset):
 
 def _use_wad_evaluator(dataset):
     """Check if the dataset uses the Cityscapes dataset evaluator."""
-    return dataset.name.find('wad') > -1 or dataset.name.find('ApolloScape') > -1
+    return dataset.name.find('wad') > -1 or dataset.name.find('ApolloScape') > -1 or dataset.name.find('Car3D') > -1
 
 
 def _use_voc_evaluator(dataset):

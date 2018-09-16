@@ -404,15 +404,33 @@ def test_net_Car3D(
     json_dir += '_iou_' + str(args.iou_ignore_threshold)
     if not cfg.TEST.BBOX_AUG.ENABLED:
         json_dir += '_single_scale'
+    else:
+        json_dir += '_multiple_scale'
+
+    if cfg.TEST.CAR_CLS_AUG.H_FLIP and cfg.TEST.CAR_CLS_AUG.SCALE_H_FLIP:
+        json_dir += '_hflipped'
 
     roidb = roidb
     for i, entry in enumerate(roidb):
         image_ids.append(entry['image'])
     args.image_ids = image_ids
 
+    all_boxes = [[[] for _ in range(num_images)] for _ in range(cfg.MODEL.NUM_CLASSES)]
+    if ind_range is not None:
+        if cfg.TEST.SOFT_NMS.ENABLED:
+            det_name = 'detection_range_%s_%s_soft_nms' % tuple(ind_range)
+        else:
+            det_name = 'detection_range_(%d_%d)_nms_%.1f' % (ind_range[0], ind_range[1], cfg.TEST.NMS)
+        if cfg.TEST.BBOX_AUG.ENABLED:
+            det_name += '_multiple_scale'
+        det_name += '.pkl'
+    else:
+        det_name = 'detections.pkl'
+    det_file = os.path.join(output_dir, det_name)
+
     file_complete_flag = [not os.path.exists(os.path.join(json_dir, entry['image'].split('/')[-1][:-4] + '.json')) for entry in roidb]
     # If we don't have the complete json file, we will load the model and execute the following:
-    if np.sum(file_complete_flag):
+    if np.sum(file_complete_flag) or not os.path.exists(det_file):
         model = initialize_model_from_cfg(args, gpu_id=gpu_id)
         for i in tqdm(range(len(roidb))):
             entry = roidb[i]
@@ -436,6 +454,7 @@ def test_net_Car3D(
             ignored_mask_binary = np.zeros(ignored_mask.shape)
             ignored_mask_binary[ignored_mask > 250] = 1
             cls_boxes_i, cls_segms_i, _, car_cls_i, euler_angle_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers, dataset)
+            extend_results(i, all_boxes, cls_boxes_i)
 
             if i % 10 == 0:  # Reduce log file size
                 ave_total_time = np.sum([t.average_time for t in timers.values()])
@@ -489,6 +508,17 @@ def test_net_Car3D(
                     box_alpha=0.8,
                     dataset=dataset.Car3D)
 
+        save_object(dict(all_boxes=all_boxes), det_file)
+
+    # The following evaluate the detection result from Faster-RCNN Head
+    # If we have already computed the boxes
+    if os.path.exists(det_file):
+        obj = load_object(det_file)
+        all_boxes = obj['all_boxes']
+
+    results = task_evaluation.evaluate_boxes(dataset, all_boxes, output_dir, args)
+
+    # The following evaluate the mAP of car poses
     args.test_dir = json_dir
     args.gt_dir = args.dataset_dir + 'car_poses'
     args.res_file = os.path.join(output_dir, 'json_'+args.list_flag+'_res.txt')
