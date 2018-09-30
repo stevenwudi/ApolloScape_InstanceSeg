@@ -42,7 +42,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a X-RCNN network')
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_mask_rcnn_R-101-FPN_2x.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_mask_rcnn_R-101-FPN_2x_non_local.yaml', help='Config file for training (and optionally testing)')
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')

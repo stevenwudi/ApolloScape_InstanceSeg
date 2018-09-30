@@ -11,6 +11,8 @@ from modeling.generate_anchors import generate_anchors
 from modeling.generate_proposals import GenerateProposalsOp
 from torch.nn import init
 
+from modeling.non_local import NONLocalBlock2D
+
 # Lowest and highest pyramid levels in the backbone network. For FPN, we assume
 # that all networks have 5 spatial reductions, each by a factor of 2. Level 1
 # would correspond to the input image, hence it does not make sense to use it.
@@ -90,15 +92,21 @@ class fpn(nn.Module):
         # Step 1: recursively build down starting from the coarsest backbone level
         #
         # For the coarest backbone level: 1x1 conv only seeds recursion
-        self.conv_top = nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0)
-        if cfg.FPN.USE_GN:
+        if cfg.FPN.NON_LOCAL:
             self.conv_top = nn.Sequential(
+                NONLocalBlock2D(in_channels=fpn_dim_lateral[0]),
                 nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0, bias=False),
-                nn.GroupNorm(net_utils.get_group_gn(fpn_dim), fpn_dim,
-                             eps=cfg.GROUP_NORM.EPSILON)
             )
         else:
-            self.conv_top = nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0)
+
+            if cfg.FPN.USE_GN:
+                self.conv_top = nn.Sequential(
+                    nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0, bias=False),
+                    nn.GroupNorm(net_utils.get_group_gn(fpn_dim), fpn_dim,
+                                 eps=cfg.GROUP_NORM.EPSILON)
+                )
+            else:
+                self.conv_top = nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0)
         self.topdown_lateral_modules = nn.ModuleList()
         self.posthoc_modules = nn.ModuleList()
 

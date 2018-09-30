@@ -783,6 +783,8 @@ __C.FPN.EXTRA_CONV_LEVELS = False
 # Use GroupNorm in the FPN-specific layers (lateral, etc.)
 __C.FPN.USE_GN = False
 
+# Use Non local block (right before the last residual block of res4)
+__C.FPN.NON_LOCAL = False
 # ---------------------------------------------------------------------------- #
 # CAR_CLS options
 # ---------------------------------------------------------------------------- #

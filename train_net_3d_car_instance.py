@@ -1,7 +1,7 @@
 import argparse
 import os
 #os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
 
 import sys
 import pickle
@@ -41,18 +41,16 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
 def parse_args():
     """Parse input arguments"""
     parser = argparse.ArgumentParser(description='Train a X-RCNN network')
+    # The following cfg and ckpt will be changed accordingly.
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep09-23-42-21_N606-TITAN32_step/ckpt/model_step56534.pth', help='checkpoint path to load')
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_trans_conv_head_3d_2d_loss.yaml', help='Config file for training (and optionally testing)')
-
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')
     parser.add_argument('--disp_interval', help='Display training info every N iterations', default=20, type=int)
     parser.add_argument('--no_cuda', dest='cuda', help='Do not use CUDA device', action='store_false')
     parser.add_argument('--dataset_dir', default='/media/samsumg_1tb/ApolloScape/ECCV2018_apollo/train')
-    parser.add_argument('--output_dir', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg''')
+    parser.add_argument('--output_dir', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg')
 
     # Optimization
     # These options has the highest prioity and can overwrite the values in config file or values set by set_cfgs. `None` means do not overwrite.
@@ -68,17 +66,7 @@ def parse_args():
     # Resume training: requires same iterations per epoch
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
-    #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Aug31-11-41-25_N606-TITAN32_step/ckpt/model_step85385.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN/Sep02-00-16-19_n606_step/ckpt/model_step61312.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep02-12-03-23_N606-TITAN32_step/ckpt/model_step72750.pth', help='checkpoint path to load')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_trans_conv_head/Sep04-00-18-30_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep06-00-38-11_N606-TITAN32_step/ckpt/model_step79999.pth', help='checkpoint path to load')
-
-
-    #parser.add_argument('--ckpt_ignore_head', default=['car_trans_Outs'], help='heads parameters will be ignored during loading')
     parser.add_argument('--ckpt_ignore_head', default=[], help='heads parameters will be ignored during loading')
-
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 
