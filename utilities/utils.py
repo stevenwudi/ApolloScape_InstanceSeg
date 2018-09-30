@@ -307,5 +307,56 @@ def im_car_trans_geometric(dataset, boxes, euler_angle, car_cls, im_scale=1.0):
     return np.array(car_trans_pred)
 
 
+def im_car_trans_geometric_ssd6d(dataset, boxes, euler_angle, car_cls, im_scale=1.0):
+    ###
+    fx, fy, cx, cy = extract_intrinsic(dataset)
+
+    car_cls_max = np.argmax(car_cls, axis=1)
+    car_names = [dataset.Car3D.car_id2name[x].name for x in dataset.Car3D.unique_car_models[car_cls_max]]
+
+    if im_scale != 1:
+        raise Exception("not implemented, check it")
+    boxes = boxes / im_scale
+
+    car_trans_pred = []
+    # canonical centroid zr = 10.0
+    zr = 10.0
+    trans_vect = np.zeros((3, 1))
+    trans_vect[2] = zr
+    for car_idx in range(boxes.shape[0]):
+        box = boxes[car_idx]
+
+        # lr denotes diagonal length of the precomputed bounding box and ls denotes the diagonal length
+        # of the predicted bounding box on the image plane
+        ls = np.sqrt((box[2] - box[0]) ** 2 + (box[3] - box[1])**2)
+        # project 3D points to 2d image plane
+        # https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+        euler_angle_i = euler_angle[car_idx]
+        rmat = euler_angles_to_rotation_matrix(euler_angle_i)
+        car = dataset.Car3D.car_models[car_names[car_idx]]
+        x_y_z_R = np.matmul(rmat, np.transpose(np.float32(car['vertices'])))
+        x_y_z_R_T = x_y_z_R + trans_vect
+        x_y_z_R_T_hat = x_y_z_R_T / x_y_z_R_T[2, :]
+
+        u = fx * x_y_z_R_T_hat[0, :] + cx
+        v = fy * x_y_z_R_T_hat[1, :] + cy
+        lr = np.sqrt((u.max() - u.min())**2 + (v.max() - v.min())**2)
+
+        zs = lr * zr / ls
+
+        xc = (box[0] + box[2]) / 2
+        yc = (box[1] + box[3]) / 2
+        xc_syn = (u.max() + u.min())/2
+        yc_syn = (v.max() + v.min())/2
+
+        xt = zs * (xc - xc_syn) / fx
+        yt = zs * (yc - yc_syn) / fy
+
+        pred_pose = np.array([xt, yt, zs])
+        car_trans_pred.append(pred_pose)
+
+    return np.array(car_trans_pred)
+
+
 if __name__ == '__main__':
     pass

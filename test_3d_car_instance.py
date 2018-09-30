@@ -83,10 +83,10 @@ if __name__ == '__main__':
 
     # Wudi hard coded the following range
     if args.list_flag == 'test':
-        #args.range = [0, 1041]
+        args.range = [0, 1041]
         # i = 7
         # args.range = [i*125, (i+1)*125]
-        args.range = [1000, 1041]
+        #args.range = [1000, 1041]
     elif args.list_flag == 'val':
         args.range = [0, 206]
         # i = 3

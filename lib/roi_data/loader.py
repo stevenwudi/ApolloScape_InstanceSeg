@@ -13,12 +13,8 @@ from core.config import cfg
 from roi_data.minibatch import get_minibatch
 
 
-# from model.rpn.bbox_transform import bbox_transform_inv, clip_boxes
-
-
 class RoiDataLoader(data.Dataset):
-    def __init__(self, roidb, num_classes, training=True,
-                 valid_keys=[]):
+    def __init__(self, roidb, num_classes, training=True, valid_keys=[]):
         """
         :param roidb:
         :param num_classes:

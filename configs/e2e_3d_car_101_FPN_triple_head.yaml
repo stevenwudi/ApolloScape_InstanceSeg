@@ -101,7 +101,7 @@ TEST:
     ENABLED: True
     VOTE_TH: 0.9
   BBOX_AUG:
-    ENABLED: True
+    ENABLED: False
     SCORE_HEUR: UNION
     COORD_HEUR: UNION
     H_FLIP: True
@@ -113,11 +113,14 @@ TEST:
     ASPECT_RATIO_H_FLIP: False
 
   CAR_CLS_AUG:
-    ENABLED: True
+    ENABLED: False
     SCALES: (1200, 1700, 2200) # we don't need 3384 because the first SCALE include it!
     MAX_SIZE: 3384
     H_FLIP: False
     SCALE_H_FLIP: False
+
+  GEOMETRIC_TRANS: True # Using "SSD-6D: Making RGB-Based 3D Detection and 6D Pose Estimation Great Again" CVPR for estimating Trans
+
 
   MASK_AUG:
     ENABLED: True

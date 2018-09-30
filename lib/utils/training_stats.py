@@ -210,7 +210,7 @@ class TrainingStats(object):
             setattr(self, attr_name, [])
         return mean_val
 
-    def LogIterStats(self, cur_iter, lr, warmup_factor_trans):
+    def LogIterStats(self, cur_iter, lr, warmup_factor_trans=1.0):
         """Log the tracked statistics."""
         if (cur_iter % self.LOG_PERIOD == 0 or
                 cur_iter == cfg.SOLVER.MAX_ITER - 1):

@@ -61,8 +61,7 @@ def parse_args():
     # Resume training: requires same iterations per epoch
     parser.add_argument('--resume', default=False, help='resume to training on a checkpoint', action='store_true')
     parser.add_argument('--no_save', help='do not save anything', action='store_true')
-    #parser.add_argument('--load_ckpt', default=None, help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/stevenwudi/stevenwudi/PycharmProjects/CVPR_2018_WAD/Outputs/e2e_mask_rcnn_R-101-FPN_2x/Jun13-15-31-20_n606_step/ckpt/model_step29999.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/Outputs/e2e_mask_rcnn_R-101-FPN_2x/Aug13-13-18-43_N606-TITAN32_step/ckpt/model_step99999.pth', help='checkpoint path to load')
     parser.add_argument('--load_detectron', help='path to the detectron weight pickle file')
     parser.add_argument('--use_tfboard', default=True, help='Use tensorflow tensorboard to log training info', action='store_true')
 
@@ -185,7 +184,11 @@ def main():
     dataset = RoiDataLoader(
         roidb,
         cfg.MODEL.NUM_CLASSES,
-        training=True)
+        training=True,
+        valid_keys=['entry_id', 'image', 'has_visible_keypoints', 'gt_classes', 'seg_areas', 'is_crowd',
+                    'box_to_gt_ind_map', 'height', 'width', 'boxes', 'segms', 'flipped', 'max_classes', 'max_overlaps',
+                    'gt_overlaps', 'need_crop']
+    )
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=args.batch_size,

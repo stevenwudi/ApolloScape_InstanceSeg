@@ -399,13 +399,21 @@ def test_net_Car3D(
     if cfg.MODEL.TRANS_HEAD_ON:
         json_dir = os.path.join(output_dir, 'json_'+args.list_flag+'_trans')
     else:
-        json_dir = os.path.join(output_dir, 'json_'+args.list_flag)
+        json_dir = os.path.join(output_dir, 'json_d'+args.list_flag)
 
     json_dir += '_iou_' + str(args.iou_ignore_threshold)
     if not cfg.TEST.BBOX_AUG.ENABLED:
-        json_dir += '_single_scale'
+        json_dir += '_BBOX_AUG_single_scale'
     else:
-        json_dir += '_multiple_scale'
+        json_dir += '_BBOX_AUG_multiple_scale'
+
+    if not cfg.TEST.CAR_CLS_AUG.ENABLED:
+        json_dir += '_CAR_CLS_AUG_single_scale'
+    else:
+        json_dir += '_CAR_CLS_AUG_multiple_scale'
+
+    if cfg.TEST.GEOMETRIC_TRANS:
+        json_dir += '_GEOMETRIC_TRANS'
 
     if cfg.TEST.CAR_CLS_AUG.H_FLIP and cfg.TEST.CAR_CLS_AUG.SCALE_H_FLIP:
         json_dir += '_hflipped'

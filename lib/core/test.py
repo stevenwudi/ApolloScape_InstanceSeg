@@ -45,7 +45,7 @@ import utils.blob as blob_utils
 import utils.fpn as fpn_utils
 import utils.image as image_utils
 import utils.keypoints as keypoint_utils
-from utilities.utils import im_car_trans_geometric
+from utilities.utils import im_car_trans_geometric, im_car_trans_geometric_ssd6d
 from utilities.utils import quaternion_to_euler_angle
 
 
@@ -101,6 +101,11 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
         else:
             car_cls_score, car_cls, euler_angle, car_trans_pred = triple_head(model, im_scale, boxes, blob_conv)
         timers['triple_head'].toc()
+
+        if cfg.TEST.GEOMETRIC_TRANS:
+            car_trans_pred_geo = im_car_trans_geometric_ssd6d(dataset, boxes, euler_angle, car_cls, im_scale=1.0)
+            car_trans_pred = car_trans_pred_geo
+
     else:
         if cfg.MODEL.CAR_CLS_HEAD_ON and boxes.shape[0] > 0:
             timers['im_car_cls'].tic()

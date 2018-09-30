@@ -304,6 +304,11 @@ __C.TEST.BBOX_AUG.ASPECT_RATIO_H_FLIP = False
 # Test-time augmentations for car class detection
 # See configs/test_time_aug/e2e_mask_rcnn_R-50-FPN_2x.yaml for an example
 # ---------------------------------------------------------------------------- #
+
+# Using "SSD-6D: Making RGB-Based 3D Detection and 6D Pose Estimation Great Again" CVPR for estimating Trans
+__C.TEST.GEOMETRIC_TRANS = False
+
+
 __C.TEST.CAR_CLS_AUG = AttrDict()
 __C.TEST.CAR_CLS_AUG.ENABLED = False
 

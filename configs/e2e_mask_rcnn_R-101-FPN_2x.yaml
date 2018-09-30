@@ -2,6 +2,7 @@ MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.fpn_ResNet101_conv5_body
   FASTER_RCNN: True
+  MASK_TRAIN_ON: True
   MASK_ON: True
 RESNETS:
   IMAGENET_PRETRAINED_WEIGHTS: '/home/wudi/PycharmProjects/ApolloScape_InstanceSeg/data/pretrained_model/resnet101_caffe.pth'
