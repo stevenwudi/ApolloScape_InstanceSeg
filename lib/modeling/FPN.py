@@ -182,7 +182,21 @@ class fpn(nn.Module):
             mapping_to_detectron['conv_body.' + key] = value
 
         d_prefix = 'fpn_inner_' + self.fpn_level_info.blobs[0]
-        if cfg.FPN.USE_GN:
+        if cfg.FPN.NON_LOCAL:
+            mapping_to_detectron['conv_top.0.g.0.weight'] = d_prefix + '_g_w'
+            mapping_to_detectron['conv_top.0.g.0.bias'] = d_prefix + '_g_b'
+            mapping_to_detectron['conv_top.0.theta.weight'] = d_prefix + '_theta_w'
+            mapping_to_detectron['conv_top.0.theta.bias'] = d_prefix + '_theta_b'
+            mapping_to_detectron['conv_top.0.phi.0.weight'] = d_prefix + '_phi_w'
+            mapping_to_detectron['conv_top.0.phi.0.bias'] = d_prefix + '_phi_b'
+            mapping_to_detectron['conv_top.0.W.0.weight'] = d_prefix + '_0_w'
+            mapping_to_detectron['conv_top.0.W.0.bias'] = d_prefix + '_0_b'
+            mapping_to_detectron['conv_top.0.W.1.weight'] = d_prefix + '_1_w'
+            mapping_to_detectron['conv_top.0.W.1.bias'] = d_prefix + '_1_b'
+            mapping_to_detectron['conv_top.0.W.1.running_mean'] = d_prefix + '_1_running_mean'
+            mapping_to_detectron['conv_top.0.W.1.running_var'] = d_prefix + '_1_running_var'
+            mapping_to_detectron['conv_top.1.weight'] = d_prefix + '_1_weight'
+        elif cfg.FPN.USE_GN:
             mapping_to_detectron['conv_top.0.weight'] = d_prefix + '_w'
             mapping_to_detectron['conv_top.1.weight'] = d_prefix + '_gn_s'
             mapping_to_detectron['conv_top.1.bias'] = d_prefix + '_gn_b'
