@@ -22,6 +22,10 @@ from __future__ import unicode_literals
 
 from collections import defaultdict
 import cv2
+from matplotlib import pyplot as plt
+from matplotlib.ticker import MultipleLocator
+import matplotlib.patches as patches
+
 import datetime
 import logging
 import numpy as np
@@ -461,8 +465,37 @@ def test_net_Car3D(
             ignored_mask = cv2.imread(ignored_mask_img, cv2.IMREAD_GRAYSCALE)
             ignored_mask_binary = np.zeros(ignored_mask.shape)
             ignored_mask_binary[ignored_mask > 250] = 1
-            cls_boxes_i, cls_segms_i, _, car_cls_i, euler_angle_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers, dataset)
+            if cfg.MODEL.NON_LOCAL_TEST and not cfg.TEST.BBOX_AUG.ENABLED:
+                cls_boxes_i, cls_segms_i, _, car_cls_i, euler_angle_i, trans_pred_i, f_div_C = im_detect_all(model, im, box_proposals, timers, dataset)
+            else:
+                cls_boxes_i, cls_segms_i, _, car_cls_i, euler_angle_i, trans_pred_i = im_detect_all(model, im, box_proposals, timers, dataset)
             extend_results(i, all_boxes, cls_boxes_i)
+
+            # We draw the grid overlap with an image here
+            if False:
+                grid_size = 32  # This is the res5 output space
+                fig = plt.figure()
+                ax1 = fig.add_subplot(1, 2, 1)
+                ax2 = fig.add_subplot(1, 2, 2)
+
+                ax1.imshow(cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
+                # Set minor tick locations.
+                minorLocator = MultipleLocator(grid_size)
+                ax1.yaxis.set_minor_locator(minorLocator)
+                ax1.xaxis.set_minor_locator(minorLocator)
+                # Set grid to use minor tick locations.
+                ax1.grid(which='minor')
+
+                # We choose the point here:
+                x, y = int(1900/grid_size), int(1600/grid_size)
+                # draw a patch hre
+                rect = patches.Rectangle((y*grid_size, x*grid_size), grid_size, grid_size,
+                                         linewidth=1, edgecolor='r', facecolor='r')
+                ax1.add_patch(rect)
+
+                att_point_map = f_div_C[106*x+y, :]
+                att_point_map = np.reshape(att_point_map, (85, 106))
+                ax2.imshow(att_point_map)
 
             if i % 10 == 0:  # Reduce log file size
                 ave_total_time = np.sum([t.average_time for t in timers.values()])

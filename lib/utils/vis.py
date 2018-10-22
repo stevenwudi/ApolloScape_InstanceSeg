@@ -532,12 +532,11 @@ def write_pose_to_json(im_name, output_dir, boxes, car_cls_prob, euler_angle, tr
             car_info["area"] = int(areas[i])
             car_info["score"] = float(score)
             if iou_ignore_threshold:
+                masks = np.zeros_like(ignored_mask_binary)
+                masks[int(boxes[i][1]):int(boxes[i][3]), int(boxes[i][0]): int(boxes[i][2])] = 1
+                iou_mask = masks * ignored_mask_binary
+                iou = np.sum(iou_mask) / int(areas[i])
                 if iou <= iou_ignore_threshold:
-                    dt_mask = masks[:, :, i]
-                    dt_area = int(dt_mask.sum())
-                    iou_mask = dt_mask * ignored_mask_binary
-                    iou = np.sum(iou_mask) / dt_area
-                    car_info["area"] = dt_area
                     car_list.append(car_info)
                 else:
                     print('This mask has been ignored')

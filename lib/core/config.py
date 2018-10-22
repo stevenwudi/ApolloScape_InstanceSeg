@@ -480,6 +480,9 @@ __C.MODEL.CAR_CLS_HEAD_ON = False
 # Indicates the model makes 3d car translation predictions
 __C.MODEL.TRANS_HEAD_ON = False
 
+# Indicates the model makes 3d car translation predictions
+__C.MODEL.NON_LOCAL_TEST = False
+
 # Indicates the model use 3D to 2D projection error for multi-loss
 __C.MODEL.LOSS_3D_2D_ON = False
 

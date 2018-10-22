@@ -93,10 +93,8 @@ class fpn(nn.Module):
         #
         # For the coarest backbone level: 1x1 conv only seeds recursion
         if cfg.FPN.NON_LOCAL:
-            self.conv_top = nn.Sequential(
-                NONLocalBlock2D(in_channels=fpn_dim_lateral[0]),
-                nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0, bias=False),
-            )
+            self.non_local_top = NONLocalBlock2D(in_channels=fpn_dim_lateral[0], sub_sample=False)
+            self.conv_top = nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0)
         else:
 
             if cfg.FPN.USE_GN:
@@ -183,19 +181,21 @@ class fpn(nn.Module):
 
         d_prefix = 'fpn_inner_' + self.fpn_level_info.blobs[0]
         if cfg.FPN.NON_LOCAL:
-            mapping_to_detectron['conv_top.0.g.0.weight'] = d_prefix + '_g_w'
-            mapping_to_detectron['conv_top.0.g.0.bias'] = d_prefix + '_g_b'
-            mapping_to_detectron['conv_top.0.theta.weight'] = d_prefix + '_theta_w'
-            mapping_to_detectron['conv_top.0.theta.bias'] = d_prefix + '_theta_b'
-            mapping_to_detectron['conv_top.0.phi.0.weight'] = d_prefix + '_phi_w'
-            mapping_to_detectron['conv_top.0.phi.0.bias'] = d_prefix + '_phi_b'
-            mapping_to_detectron['conv_top.0.W.0.weight'] = d_prefix + '_0_w'
-            mapping_to_detectron['conv_top.0.W.0.bias'] = d_prefix + '_0_b'
-            mapping_to_detectron['conv_top.0.W.1.weight'] = d_prefix + '_1_w'
-            mapping_to_detectron['conv_top.0.W.1.bias'] = d_prefix + '_1_b'
-            mapping_to_detectron['conv_top.0.W.1.running_mean'] = d_prefix + '_1_running_mean'
-            mapping_to_detectron['conv_top.0.W.1.running_var'] = d_prefix + '_1_running_var'
-            mapping_to_detectron['conv_top.1.weight'] = d_prefix + '_1_weight'
+            mapping_to_detectron['non_local_top.g.weight'] = d_prefix + '_g_w'
+            mapping_to_detectron['non_local_top.g.bias'] = d_prefix + '_g_b'
+            mapping_to_detectron['non_local_top.theta.weight'] = d_prefix + '_theta_w'
+            mapping_to_detectron['non_local_top.theta.bias'] = d_prefix + '_theta_b'
+            mapping_to_detectron['non_local_top.phi.weight'] = d_prefix + '_phi_w'
+            mapping_to_detectron['non_local_top.phi.bias'] = d_prefix + '_phi_b'
+            mapping_to_detectron['non_local_top.W.0.weight'] = d_prefix + '_0_w'
+            mapping_to_detectron['non_local_top.W.0.bias'] = d_prefix + '_0_b'
+            mapping_to_detectron['non_local_top.W.1.weight'] = d_prefix + '_1_w'
+            mapping_to_detectron['non_local_top.W.1.bias'] = d_prefix + '_1_b'
+            mapping_to_detectron['non_local_top.W.1.running_mean'] = d_prefix + '_1_running_mean'
+            mapping_to_detectron['non_local_top.W.1.running_var'] = d_prefix + '_1_running_var'
+            mapping_to_detectron['conv_top.weight'] = d_prefix + '_w'
+            mapping_to_detectron['conv_top.bias'] = d_prefix + '_b'
+
         elif cfg.FPN.USE_GN:
             mapping_to_detectron['conv_top.0.weight'] = d_prefix + '_w'
             mapping_to_detectron['conv_top.1.weight'] = d_prefix + '_gn_s'
@@ -251,7 +251,11 @@ class fpn(nn.Module):
             conv_body_blobs.append(
                 getattr(self.conv_body, 'res%d' % (i + 1))(conv_body_blobs[-1])
             )
-        fpn_inner_blobs = [self.conv_top(conv_body_blobs[-1])]
+        if cfg.FPN.NON_LOCAL:
+            z, f_div_C = self.non_local_top(conv_body_blobs[-1])
+            fpn_inner_blobs = [self.conv_top(z)]
+        else:
+            fpn_inner_blobs = [self.conv_top(conv_body_blobs[-1])]
         for i in range(self.num_backbone_stages - 1):
             fpn_inner_blobs.append(
                 self.topdown_lateral_modules[i](fpn_inner_blobs[-1], conv_body_blobs[-(i + 2)])
@@ -276,7 +280,10 @@ class fpn(nn.Module):
             return fpn_output_blobs[-1]
         else:
             # use all levels
-            return fpn_output_blobs
+            if cfg.FPN.NON_LOCAL:
+                return fpn_output_blobs, f_div_C
+            else:
+                return fpn_output_blobs
 
 
 class topdown_lateral_module(nn.Module):

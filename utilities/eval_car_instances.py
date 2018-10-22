@@ -405,7 +405,7 @@ class Detect3DEval(object):
 
             """
             p = self.params
-            iStr = ' {:<18} {} @[ Criteria={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'
+            iStr = ' {:<18} {} @[ Criteria={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.5f}'
             titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
             typeStr = '(AP)' if ap == 1 else '(AR)'
             simstr = 'c0:c5' if simThr is None else simThr

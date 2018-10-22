@@ -68,7 +68,10 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
     if cfg.TEST.BBOX_AUG.ENABLED:
         scores, boxes, im_scale, blob_conv = im_detect_bbox_aug(model, im, box_proposals)
     else:
-        scores, boxes, im_scale, blob_conv = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, box_proposals)
+        if cfg.MODEL.NON_LOCAL_TEST:
+            scores, boxes, im_scale, blob_conv, f_div_C = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, box_proposals)
+        else:
+            scores, boxes, im_scale, blob_conv = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, box_proposals)
     timers['im_detect_bbox'].toc()
 
     # score and boxes are from the whole image after score thresholding and nms
@@ -149,7 +152,10 @@ def im_detect_all(model, im, box_proposals=None, timers=None, dataset=None):
     else:
         cls_keyps = None
 
-    return cls_boxes, cls_segms, cls_keyps, car_cls, euler_angle, car_trans_pred
+    if cfg.MODEL.NON_LOCAL_TEST and not cfg.TEST.BBOX_AUG.ENABLED:
+        return cls_boxes, cls_segms, cls_keyps, car_cls, euler_angle, car_trans_pred, f_div_C.data.cpu().numpy().squeeze()
+    else:
+        return cls_boxes, cls_segms, cls_keyps, car_cls, euler_angle, car_trans_pred
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
@@ -228,7 +234,10 @@ def im_detect_bbox(model, im, target_scale, target_max_size, boxes=None):
         scores = scores[inv_index, :]
         pred_boxes = pred_boxes[inv_index, :]
 
-    return scores, pred_boxes, im_scale, return_dict['blob_conv']
+    if cfg.MODEL.NON_LOCAL_TEST:
+        return scores, pred_boxes, im_scale, return_dict['blob_conv'], return_dict['f_div_C']
+    else:
+        return scores, pred_boxes, im_scale, return_dict['blob_conv']
 
 
 def im_detect_bbox_aug(model, im, box_proposals=None):
@@ -296,7 +305,10 @@ def im_detect_bbox_aug(model, im, box_proposals=None):
     # Compute detections for the original image (identity transform) last to
     # ensure that the Caffe2 workspace is populated with blobs corresponding
     # to the original image on return (postcondition of im_detect_bbox)
-    scores_i, boxes_i, im_scale_i, blob_conv_i = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals)
+    if cfg.MODEL.NON_LOCAL_TEST:
+        scores_i, boxes_i, im_scale_i, blob_conv_i, f_div_C_i = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals)
+    else:
+        scores_i, boxes_i, im_scale_i, blob_conv_i = im_detect_bbox(model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals)
     add_preds_t(scores_i, boxes_i)
 
     # Combine the predicted scores
@@ -338,10 +350,14 @@ def im_detect_bbox_hflip(model, im, target_scale, target_max_size, box_proposals
         box_proposals_hf = box_utils.flip_boxes(box_proposals, im_width)
     else:
         box_proposals_hf = None
-
-    scores_hf, boxes_hf, im_scale, _ = im_detect_bbox(
-        model, im_hf, target_scale, target_max_size, boxes=box_proposals_hf
-    )
+    if cfg.MODEL.NON_LOCAL_TEST:
+        scores_hf, boxes_hf, im_scale, _, f_div_C = im_detect_bbox(
+            model, im_hf, target_scale, target_max_size, boxes=box_proposals_hf
+        )
+    else:
+        scores_hf, boxes_hf, im_scale, _ = im_detect_bbox(
+            model, im_hf, target_scale, target_max_size, boxes=box_proposals_hf
+        )
 
     # Invert the detections computed on the flipped image
     boxes_inv = box_utils.flip_boxes(boxes_hf, im_width)
@@ -358,9 +374,11 @@ def im_detect_bbox_scale(model, im, target_scale, target_max_size, box_proposals
             model, im, target_scale, target_max_size, box_proposals=box_proposals
         )
     else:
-        scores_scl, boxes_scl, _, _ = im_detect_bbox(
-            model, im, target_scale, target_max_size, boxes=box_proposals
-        )
+        if cfg.MODEL.NON_LOCAL_TEST:
+            scores_scl, boxes_scl, _, _, f_div_C = im_detect_bbox(model, im, target_scale, target_max_size, boxes=box_proposals)
+
+        else:
+            scores_scl, boxes_scl, _, _ = im_detect_bbox(model, im, target_scale, target_max_size, boxes=box_proposals)
     return scores_scl, boxes_scl
 
 
@@ -1185,8 +1203,7 @@ def _add_multilevel_rois_for_test(blobs, name):
 def _get_blobs(im, rois, target_scale, target_max_size):
     """Convert an image and RoIs within that image into network inputs."""
     blobs = {}
-    blobs['data'], im_scale, blobs['im_info'] = \
-        blob_utils.get_image_blob(im, target_scale, target_max_size)
+    blobs['data'], im_scale, blobs['im_info'] = blob_utils.get_image_blob(im, target_scale, target_max_size)
     if rois is not None:
         blobs['rois'] = _get_rois_blob(rois, im_scale)
     return blobs, im_scale

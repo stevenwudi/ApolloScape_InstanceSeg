@@ -34,8 +34,8 @@ MRCNN:
   CONV_INIT: MSRAFill  # default GaussianFill
 TRAIN:
   #SCALES: (800,)
-  SCALES: (1600, 2300)  # If it's 0, means that we don't resize it
-  MAX_SIZE: 2300
+  SCALES: (1600, 2000)  # If it's 0, means that we don't resize it
+  MAX_SIZE: 2000
   BATCH_SIZE_PER_IM: 512
   RPN_PRE_NMS_TOP_N: 4000  # Per FPN level, 2000 default
   CE_FINETUNE_WIGHT: ( 1,  1.20,    6.4,         14.35,      1.   , 2.48,   1.53427976,    4.088)

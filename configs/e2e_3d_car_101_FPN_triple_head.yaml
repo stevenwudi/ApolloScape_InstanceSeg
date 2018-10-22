@@ -119,7 +119,7 @@ TEST:
     H_FLIP: False
     SCALE_H_FLIP: False
 
-  GEOMETRIC_TRANS: True # Using "SSD-6D: Making RGB-Based 3D Detection and 6D Pose Estimation Great Again" CVPR for estimating Trans
+  GEOMETRIC_TRANS: False # Using "SSD-6D: Making RGB-Based 3D Detection and 6D Pose Estimation Great Again" CVPR for estimating Trans
 
 
   MASK_AUG:

@@ -43,7 +43,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a X-RCNN network')
     # The following cfg and ckpt will be changed accordingly.
     parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local/Sep30-11-54-26_N606-TITAN32_step/ckpt/model_step10905.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local/Oct02-11-35-29_N606-TITAN32_step/ckpt/model_step49741.pth', help='checkpoint path to load')
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
     parser.add_argument('--set', dest='set_cfgs', help='Set config keys. Key value sequence seperate by whitespace.''e.g. [key] [value] [key] [value]', default=[], nargs='+')

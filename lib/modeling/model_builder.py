@@ -183,8 +183,12 @@ class Generalized_RCNN(nn.Module):
             roidb = list(map(lambda x: blob_utils.deserialize(x)[0], roidb))
 
         return_dict = {}  # A dict to collect return variables
-
-        blob_conv = self.Conv_Body(im_data)
+        if cfg.FPN.NON_LOCAL:
+            blob_conv, f_div_C = self.Conv_Body(im_data)
+            if cfg.MODEL.NON_LOCAL_TEST:
+                return_dict['f_div_C'] = f_div_C
+        else:
+            blob_conv = self.Conv_Body(im_data)
 
         rpn_ret = self.RPN(blob_conv, im_info, roidb)
 
@@ -439,7 +443,10 @@ class Generalized_RCNN(nn.Module):
     @check_inference
     def convbody_net(self, data):
         """For inference. Run Conv Body only"""
-        blob_conv = self.Conv_Body(data)
+        if cfg.MODEL.NON_LOCAL_TEST:
+            blob_conv, f_div_C = self.Conv_Body(data)
+        else:
+            blob_conv = self.Conv_Body(data)
         if cfg.FPN.FPN_ON:
             # Retain only the blobs that will be used for RoI heads. `blob_conv` may include
             # extra blobs that are used for RPN proposals, but not for RoI heads.

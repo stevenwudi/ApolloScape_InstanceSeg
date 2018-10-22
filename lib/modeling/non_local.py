@@ -90,8 +90,8 @@ class _NonLocalBlockND(nn.Module):
         elif self.mode == 'gaussian':
             self.operation_function = self._gaussian
 
-        output = self.operation_function(x)
-        return output
+        output, f_div_C = self.operation_function(x)
+        return output, f_div_C
 
     def _embedded_gaussian(self, x):
         batch_size = x.size(0)
@@ -116,7 +116,7 @@ class _NonLocalBlockND(nn.Module):
         W_y = self.W(y)
         z = W_y + x
 
-        return z
+        return z, f_div_C
 
     def _gaussian(self, x):
         batch_size = x.size(0)
