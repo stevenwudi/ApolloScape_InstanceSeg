@@ -50,7 +50,11 @@ def _get_image_blob(roidb):
     """
     num_images = len(roidb)
     # Sample random scales to use for each image in this batch
-    target_size = np.random.randint(low=cfg.TRAIN.SCALES[0], high=cfg.TRAIN.SCALES[1], size=num_images)
+    if cfg.TRAIN.SCALES[0] == 0:
+        target_size = cfg.TRAIN.MAX_SIZE
+    else:
+        target_size = np.random.randint(low=cfg.TRAIN.SCALES[0], high=cfg.TRAIN.SCALES[1], size=num_images)
+
     processed_ims = []
     im_scales = []
     for i in range(num_images):

@@ -1,0 +1,123 @@
+MODEL:
+  TYPE: generalized_rcnn
+  CONV_BODY: FPN.fpn_ResNet101_conv5_body
+  FASTER_RCNN: True
+  MASK_ON: True
+  MASK_TRAIN_ON: True   # Whether we train the mask
+  CAR_CLS_HEAD_ON: True
+  TRANS_HEAD_ON: True
+  LOSS_3D_2D_ON : False
+NUM_GPUS: 4
+
+SOLVER:
+  WEIGHT_DECAY: 0.0001
+  LR_POLICY: steps_with_decay
+  BASE_LR: 0.01
+  GAMMA: 0.1
+  MAX_ITER:  80000
+  STEPS: [0, 20000, 40000]
+  WARM_UP_ITERS: 1000
+  WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
+
+FPN:
+  FPN_ON: True
+  FPN_LOSS_SHOW: False
+  MULTILEVEL_ROIS: True
+  MULTILEVEL_RPN: True
+
+FAST_RCNN:
+  ROI_BOX_HEAD: fast_rcnn_heads.roi_2mlp_head
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 7
+  ROI_XFORM_SAMPLING_RATIO: 2
+
+
+CAR_CLS:
+  ROI_BOX_HEAD: car_3d_pose_heads.roi_car_cls_rot_head
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 7
+  ROI_XFORM_SAMPLING_RATIO: 2
+  CLS_SPECIFIC_ROT: False # Use class specific mask predictions if True (otherwise use class agnostic rot predictions)
+  QUAT_NORM: True  # Normalise quaternion output to unit length.
+  SIM_MAT_LOSS: False
+  ROT_LOSS: 'L1'   # ['MSE', 'L1', 'ARCCOS']
+
+
+TRANS_HEAD:
+  TRANS_HEAD: car_3d_pose_heads.bbox_2mlp_head
+  INPUT_CONV_BODY: False
+  INPUT_TRIPLE_HEAD: True
+
+  INPUT_DIM: 4
+  OUTPUT_DIM: 3
+  MLP_HEAD_DIM: 100
+  LOSS: 'HUBER'   # ['MSE', 'L1', 'HUBER']  #'HUBER' loss
+  TRANS_LOSS_BETA: 0.1
+  NORMALISE: False
+  IPUT_NORM_BY_INTRINSIC: True
+
+MRCNN:
+  ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs
+  RESOLUTION: 28  # (output mask resolution) default 14
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 14  # default 7
+  ROI_XFORM_SAMPLING_RATIO: 2  # default 0
+  DILATION: 1  # default 2
+  CONV_INIT: MSRAFill  # default GaussianFill
+
+TRAIN:
+  SCALES: (0, 0)  # (0, 0) meanse don't resize it
+  MAX_SIZE: 400 #3384  # max size for longest side
+  RPN_PRE_NMS_TOP_N: 2000  # Per FPN level, 2000 default
+  SNAPSHOT_ITERS: 400
+  BATCH_SIZE_PER_IM: 100 # we don't have so many cars per image and we care about positive clas
+  FREEZE_CONV_BODY: False
+  FREEZE_RPN: False
+  FREEZE_FPN: False
+
+TEST:
+  SCORE_THRESH: 0.1
+  SCALE: 0  # 2710
+  MAX_SIZE: 3000  # 3384
+  NMS: 0.5
+  DETECTIONS_PER_IM: 200
+  SCORE_THRESH_FOR_TRUTH_DETECTION: 0.1
+
+  RPN_PRE_NMS_TOP_N: 2000  # Per FPN level
+  RPN_POST_NMS_TOP_N: 2000  # 1000 default
+  BBOX_VOTE:
+    ENABLED: True
+    VOTE_TH: 0.9
+  BBOX_AUG:
+    ENABLED: False
+    SCORE_HEUR: UNION
+    COORD_HEUR: UNION
+    H_FLIP: True
+    SCALES: (1200, 1700, 2200) # we don't need 3384 because the first SCALE include it!
+    MAX_SIZE: 3384
+    SCALE_H_FLIP: True
+    SCALE_SIZE_DEP: False
+    ASPECT_RATIOS: ()
+    ASPECT_RATIO_H_FLIP: False
+
+  CAR_CLS_AUG:
+    ENABLED: False
+    SCALES: (1200, 1700, 2200) # we don't need 3384 because the first SCALE include it!
+    MAX_SIZE: 3384
+    H_FLIP: False
+    SCALE_H_FLIP: False
+
+  GEOMETRIC_TRANS: False # Using "SSD-6D: Making RGB-Based 3D Detection and 6D Pose Estimation Great Again" CVPR for estimating Trans
+
+
+  MASK_AUG:
+    ENABLED: True
+    HEUR: SOFT_AVG
+    H_FLIP: True
+    SCALES: (1200, 1700, 2200) # we don't need 3384 because the first SCALE include it!
+    MAX_SIZE: 3384
+    SCALE_H_FLIP: True
+    SCALE_SIZE_DEP: False
+    ASPECT_RATIOS: ()
+    ASPECT_RATIO_H_FLIP: False
+

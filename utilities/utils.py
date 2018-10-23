@@ -133,27 +133,29 @@ def rotation_matrix_to_euler_angles(R, check=True):
         euler angle [x/roll, y/pitch, z/yaw]
     """
 
-    def isRotationMatrix(R) :
+    def isRotationMatrix(R):
         Rt = np.transpose(R)
         shouldBeIdentity = np.dot(Rt, R)
-        I = np.identity(3, dtype = R.dtype)
+        I = np.identity(3, dtype=R.dtype)
         n = np.linalg.norm(I - shouldBeIdentity)
-        return n < 1e-6
+        #return n < 3 *(1e-6)
+        # Di Wu relax the condition for TLESS dataset
+        return n < 1e-5
 
     if check:
         assert(isRotationMatrix(R))
 
-    sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
     singular = sy < 1e-6
 
-    if  not singular:
-        x = math.atan2(R[2,1] , R[2,2])
-        y = math.atan2(-R[2,0], sy)
-        z = math.atan2(R[1,0], R[0,0])
+    if not singular:
+        x = math.atan2(R[2, 1], R[2, 2])
+        y = math.atan2(-R[2, 0], sy)
+        z = math.atan2(R[1, 0], R[0, 0])
 
     else:
-        x = math.atan2(-R[1,2], R[1,1])
-        y = math.atan2(-R[2,0], sy)
+        x = math.atan2(-R[1, 2], R[1, 1])
+        y = math.atan2(-R[2, 0], sy)
         z = 0
 
     return np.array([x, y, z])

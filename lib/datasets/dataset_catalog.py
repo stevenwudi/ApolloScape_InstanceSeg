@@ -41,6 +41,11 @@ DATASETS = {
         ANN_FN: '/media/4tb/CVPR2018_WAD/train_label'
     },
 
+    'TLESS': {
+        IM_DIR: '/media/samsumg_1tb/6DB/TLESS/train',
+        ANN_FN: '/media/samsumg_1tb/6DB/TLESS/train'
+    },
+
     'ApolloScape': {
         IM_DIR: '/media/SSD_1TB/ApolloScape/ECCV2018_apollo',
         ANN_FN: '/media/SSD_1TB/ApolloScape/ECCV2018_apollo'

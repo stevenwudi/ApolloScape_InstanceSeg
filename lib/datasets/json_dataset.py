@@ -54,7 +54,9 @@ from .dataset_catalog import IM_PREFIX
 from .dataloader_wad_cvpr2018 import WAD_CVPR2018
 from .dataloader_apolloscape import ApolloScape
 from .dataloader_3d_car import Car3D
+from .dataloader_BOP import BOP
 from utilities.utils import euler_angles_to_rotation_matrix, euler_angles_to_quaternions
+from utilities.utils import rotation_matrix_to_euler_angles
 
 from PIL import Image
 import json
@@ -88,6 +90,14 @@ class JsonDataset(object):
             self.num_classes = len(self.Car3D.unique_car_models)
             self.keypoints = None
             self.eval_class = self.Car3D.eval_class
+
+        elif self.dataset_name == 'TLESS':
+            self.BOP = BOP(dataset_dir=dataset_dir, dataset_name=self.dataset_name,
+                           num_classes=cfg.MODEL.NUM_CLASSES)
+            self.classes = ['__background__'] + [c for c in self.BOP.eval_cat]
+            self.num_classes = cfg.MODEL.NUM_CLASSES + 1
+            self.keypoints = None
+            self.eval_class = self.BOP.eval_class
 
         elif self.dataset_name == 'wad':
             self.WAD_CVPR2018 = WAD_CVPR2018(dataset_dir)
@@ -194,6 +204,13 @@ class JsonDataset(object):
                 roidb = []
                 for entry in image_ids:
                     roidb.append(self._prep_roidb_entry_Car3D(entry))
+
+            elif self.dataset_name == 'TLESS':
+                image_ids = self.BOP.get_img_list(list_flag=list_flag)
+                roidb = []
+                for entry in image_ids:
+                    roidb.append(self._prep_roidb_entry_BOP(entry))
+
             if gt and not list_flag == 'test':
                 self.debug_timer.tic()
                 for entry in tqdm(roidb):
@@ -205,6 +222,8 @@ class JsonDataset(object):
                         self._add_gt_annotations_ApolloScape(entry)
                     elif self.dataset_name == 'Car3D':
                         self._add_gt_annotations_Car3d(entry)
+                    elif self.dataset_name == 'TLESS':
+                        self._add_gt_annotations_BOP(entry)
 
                 logger.debug('_add_gt_annotations took {:.3f}s'.format(self.debug_timer.toc(average=False)))
 
@@ -213,7 +232,7 @@ class JsonDataset(object):
                     extend_with_flipped_entries(roidb)
                 logger.info('Loaded dataset: {:s}'.format(self.name + '_' + list_flag))
 
-            if not self.dataset_name == 'Car3D':
+            if not self.dataset_name == 'Car3D' or self.dataset_name == 'TLESS':
                 # for Car3D, we don't have background class
                 _add_class_assignments(roidb)
 
@@ -316,6 +335,37 @@ class JsonDataset(object):
         assert os.path.exists(im_path), 'Image \'{}\' not found'.format(im_path)
 
         entry['image'] = im_path
+        entry['flipped'] = False
+        entry['has_visible_keypoints'] = False
+        entry['has_poses'] = False
+        # Empty placeholders
+        entry['boxes'] = np.empty((0, 4), dtype=np.float32)
+        entry['segms'] = []
+        entry['gt_classes'] = np.empty(0, dtype=np.int32)
+        entry['seg_areas'] = np.empty(0, dtype=np.float32)
+
+        # this is a legacy network from WAD Mask-RCNN
+        entry['gt_overlaps'] = scipy.sparse.csr_matrix(np.empty((0, 8), dtype=np.float32))
+        entry['is_crowd'] = np.empty(0, dtype=np.bool)
+        # 'box_to_gt_ind_map': Shape is (#rois). Maps from each roi to the index
+        # in the list of rois that satisfy np.where(entry['gt_classes'] > 0)
+        entry['box_to_gt_ind_map'] = np.empty(0, dtype=np.int32)
+
+        # newly added for 3d car
+        entry['visible_rate'] = np.empty(0, dtype=np.float32)
+        entry['poses'] = np.empty((0, 6), dtype=np.float32)
+        entry['car_cat_classes'] = np.empty(0, dtype=np.int32)
+        entry['quaternions'] = np.empty((0, 4), dtype=np.float32)
+        return entry
+
+    def _prep_roidb_entry_BOP(self, entry_id):
+        """Adds empty metadata fields to an roidb entry."""
+        # Reference back to the parent dataset
+        entry = {}
+        entry['entry_id'] = entry_id
+        # Make file_name an abs path
+
+        entry['image'] = entry_id
         entry['flipped'] = False
         entry['has_visible_keypoints'] = False
         entry['has_poses'] = False
@@ -619,6 +669,69 @@ class JsonDataset(object):
         entry['visible_rate'] = np.append(entry['visible_rate'], visible_rate)
         entry['poses'] = np.append(entry['poses'], poses, axis=0)
         entry['car_cat_classes'] = np.append(entry['car_cat_classes'], car_cat_classes)
+        entry['quaternions'] = np.append(entry['quaternions'], quaternions, axis=0)
+
+    def _add_gt_annotations_BOP(self, entry):
+        """Add ground truth annotation metadata to an roidb entry."""
+        entry_id = entry['entry_id']
+        model_num = entry_id.split('/')[-3]
+        img_num = int(entry_id.split('/')[-1][:4])
+
+        entry['height'] = self.BOP.image_shape[0]
+        entry['width'] = self.BOP.image_shape[1]
+
+        cam_K = self.BOP.info_all[model_num][img_num]['cam_K']
+        # There is only one model in each image
+        cam_R_m2c = self.BOP.gt_all[model_num][img_num][0]['cam_R_m2c']
+        cam_t_m2c = self.BOP.gt_all[model_num][img_num][0]['cam_t_m2c']
+        obj_bb = self.BOP.gt_all[model_num][img_num][0]['obj_bb']
+        # Sanitize bboxes -- some are invalid
+        valid_objs = []
+        valid_segms = []
+
+        # We have the bounding box here
+        x1, y1, x2, y2 = obj_bb[0], obj_bb[1], obj_bb[0] + obj_bb[2], obj_bb[1] + obj_bb[3]
+        # We read the mask here:
+        im = cv2.imread(entry_id)
+        mask = im != 0
+        mask_binary = mask[:, :, 0] + mask[:, :, 1] + mask[:, :, 2]
+        mask_f = np.array(mask_binary, order='F', dtype=np.uint8)
+        rle = COCOmask.encode(mask_f)
+        valid_segms.append(rle)
+
+        rotation_matrix = np.array(cam_R_m2c).reshape((3, 3))
+        euler_angles = rotation_matrix_to_euler_angles(rotation_matrix)
+        pose = np.concatenate((euler_angles, np.array(cam_t_m2c)))
+
+        obj = {'area': mask_f.sum(), 'clean_bbox': [x1, y1, x2, y2], 'model_num': model_num,
+               'img_num': img_num, 'pose': pose}
+
+        valid_objs.append(obj)
+
+        num_valid_objs = len(valid_objs)
+        boxes = np.zeros((num_valid_objs, 4), dtype=np.float32)
+        # this is a legacy network from WAD Mask-RCNN
+        seg_areas = np.zeros((num_valid_objs), dtype=np.float32)
+        box_to_gt_ind_map = np.zeros((num_valid_objs), dtype=np.int32)
+
+        # newly added for 3d car
+        poses = np.zeros((num_valid_objs, 6), dtype=np.float32)
+        quaternions = np.zeros((num_valid_objs, 4), dtype=np.float32)
+
+        for ix, obj in enumerate(valid_objs):
+            boxes[ix, :] = obj['clean_bbox']
+            seg_areas[ix] = obj['area']
+            box_to_gt_ind_map[ix] = ix
+            poses[ix] = obj['pose']
+            quaternions[ix] = euler_angles_to_quaternions(np.array([obj['pose'][:3]]))
+
+        entry['boxes'] = np.append(entry['boxes'], boxes, axis=0)
+        entry['seg_areas'] = np.append(entry['seg_areas'], seg_areas)
+        entry['box_to_gt_ind_map'] = np.append(entry['box_to_gt_ind_map'], box_to_gt_ind_map)
+
+        entry['segms'].extend(valid_segms)
+        # newly added for 3d car
+        entry['poses'] = np.append(entry['poses'], poses, axis=0)
         entry['quaternions'] = np.append(entry['quaternions'], quaternions, axis=0)
 
     def _add_gt_from_cache(self, roidb, cache_filepath):

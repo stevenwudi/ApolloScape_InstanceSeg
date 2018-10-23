@@ -52,6 +52,8 @@ def combined_roidb_for_training(dataset_names, dataset_dir=None, list_flag='trai
     if not os.path.exists(cache_filepath_filtered):
         if ds.name == 'Car3D':
             roidbs = filter_for_training_Car3D(roidbs, cache_filepath_filtered, ds.num_classes)
+        elif ds.name == 'TLESS':
+            roidbs = filter_for_training_TLESS(roidbs, cache_filepath_filtered, ds.num_classes)
         else:
             roidbs = filter_for_training(roidbs, cache_filepath_filtered)
 
@@ -121,6 +123,66 @@ def filter_for_training(roidb, cache_filepath_filtered):
         if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:
             filtered_roidb.append(filtered_entry)
     _add_class_assignments(filtered_roidb)
+
+    logger.info('Filtered {} obj entries: {} -> {}'.format(total_obj_count - valid_obj_count, total_obj_count, valid_obj_count))
+    logger.info('Filtered {} img entries: {} -> {}'.format(len(roidb) - len(filtered_roidb), len(roidb), len(filtered_roidb)))
+
+    with open(cache_filepath_filtered, 'wb') as fp:
+        pickle.dump(filtered_roidb, fp, pickle.HIGHEST_PROTOCOL)
+    logger.info('Cache ground truth roidb to %s', cache_filepath_filtered)
+
+    return filtered_roidb
+
+
+def filter_for_training_TLESS(roidb, cache_filepath_filtered, num_classes):
+    """Remove roidb entries that have no usable RoIs based on config settings.
+    """
+    total_obj_count = 0
+    valid_obj_count = 0
+    filtered_roidb = []
+    print('Remove roidb entry with small area')
+    for entry in tqdm(roidb):
+        filtered_entry = {}
+        # we also get rid of the tiny objects
+        valid_idx = []
+        total_obj_count += len(entry['seg_areas'])
+        for i, area in enumerate(entry['seg_areas']):
+            if area >= cfg.TRAIN.MIN_AREA:
+                valid_idx.append(i)
+        valid_obj_count += len(valid_idx)
+
+        model_num = int(entry['entry_id'].split('/')[-3])
+        obj_keys = ['boxes', 'seg_areas', 'poses', 'quaternions', 'segms']
+        total_keys = entry.keys()
+        for key in total_keys:
+            if key in obj_keys:
+                if type(entry[key]) == list:
+                    filtered_entry[key] = [entry[key][x] for x in valid_idx]
+                else:
+                    filtered_entry[key] = entry[key][valid_idx]
+            elif key != 'gt_overlaps':
+                filtered_entry[key] = entry[key]
+                filtered_entry['model_num'] = model_num
+
+        box_to_gt_ind_map = np.zeros((len(valid_idx)), dtype=np.int32)
+        gt_overlaps = np.zeros((len(valid_idx), num_classes), dtype=np.float32)
+
+        for ix in range(len(valid_idx)):
+            box_to_gt_ind_map[ix] = ix
+            # this is a legecy network from WAD MaskRCNN
+            gt_overlaps[ix, model_num] = 1.0
+
+        filtered_entry['box_to_gt_ind_map'] = box_to_gt_ind_map
+        filtered_entry['gt_overlaps'] = scipy.sparse.csr_matrix(gt_overlaps)
+        filtered_entry['gt_classes'] = np.ones(1) * model_num
+        filtered_entry['gt_classes'] = filtered_entry['gt_classes'].astype(np.int8)
+        filtered_entry['is_crowd'] = np.zeros(1)
+
+        # We only add the images with valid instances
+        if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:
+            filtered_roidb.append(filtered_entry)
+
+    _add_class_assignments(filtered_roidb, allow_zero=True)
 
     logger.info('Filtered {} obj entries: {} -> {}'.format(total_obj_count - valid_obj_count, total_obj_count, valid_obj_count))
     logger.info('Filtered {} img entries: {} -> {}'.format(len(roidb) - len(filtered_roidb), len(roidb), len(filtered_roidb)))
