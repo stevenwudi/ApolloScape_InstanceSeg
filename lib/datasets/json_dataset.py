@@ -55,7 +55,7 @@ from .dataloader_wad_cvpr2018 import WAD_CVPR2018
 from .dataloader_apolloscape import ApolloScape
 from .dataloader_3d_car import Car3D
 from .dataloader_BOP import BOP
-from utilities.utils import euler_angles_to_rotation_matrix, euler_angles_to_quaternions
+from utilities.utils import euler_angles_to_rotation_matrix, euler_angles_to_quaternions, quaternion_upper_hemispher
 from utilities.utils import rotation_matrix_to_euler_angles
 
 from PIL import Image
@@ -658,6 +658,8 @@ class JsonDataset(object):
             visible_rate[ix] = obj['visible_rate']
             poses[ix] = obj['pose']
             quaternions[ix] = euler_angles_to_quaternions(np.array([obj['pose'][:3]]))
+            # ensure the quaternion is upper hemispher
+            quaternions[ix] = quaternion_upper_hemispher(quaternions[ix])
 
         entry['boxes'] = np.append(entry['boxes'], boxes, axis=0)
         entry['seg_areas'] = np.append(entry['seg_areas'], seg_areas)
