@@ -480,22 +480,26 @@ def test_net_Car3D(
 
                 ax1.imshow(cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
                 # Set minor tick locations.
-                minorLocator = MultipleLocator(grid_size)
-                ax1.yaxis.set_minor_locator(minorLocator)
-                ax1.xaxis.set_minor_locator(minorLocator)
+                # minorLocator = MultipleLocator(grid_size)
+                # ax1.yaxis.set_minor_locator(minorLocator)
+                # ax1.xaxis.set_minor_locator(minorLocator)
                 # Set grid to use minor tick locations.
                 ax1.grid(which='minor')
 
                 # We choose the point here:
-                x, y = int(1900/grid_size), int(1600/grid_size)
+                # x, y = int(1757/grid_size), int(1040/grid_size)   # val 164
+                x, y = int(1812/grid_size), int(875/grid_size)
+
                 # draw a patch hre
                 rect = patches.Rectangle((y*grid_size, x*grid_size), grid_size, grid_size,
                                          linewidth=1, edgecolor='r', facecolor='r')
                 ax1.add_patch(rect)
 
+                att_point_map = f_div_C[:, 106*x+y]
                 att_point_map = f_div_C[106*x+y, :]
+
                 att_point_map = np.reshape(att_point_map, (85, 106))
-                ax2.imshow(att_point_map)
+                ax2.imshow(np.log(att_point_map + np.finfo(float).eps))
 
             if i % 10 == 0:  # Reduce log file size
                 ave_total_time = np.sum([t.average_time for t in timers.values()])

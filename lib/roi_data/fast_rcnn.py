@@ -136,8 +136,7 @@ def add_fast_rcnn_blobs(blobs, im_scales, roidb):
 
 
 def _sample_rois(roidb, im_scale, batch_idx):
-    """Generate a random sample of RoIs comprising foreground and background
-    examples.
+    """Generate a random sample of RoIs comprising foreground and background examples.
     """
     rois_per_image = int(cfg.TRAIN.BATCH_SIZE_PER_IM)
     fg_rois_per_image = int(np.round(cfg.TRAIN.FG_FRACTION * rois_per_image))
@@ -221,7 +220,7 @@ def _compute_targets(ex_rois, gt_rois, labels):
     assert ex_rois.shape[1] == 4
     assert gt_rois.shape[1] == 4
 
-    targets = box_utils.bbox_transform_inv(ex_rois, gt_rois,cfg.MODEL.BBOX_REG_WEIGHTS)
+    targets = box_utils.bbox_transform_inv(ex_rois, gt_rois, cfg.MODEL.BBOX_REG_WEIGHTS)
     # Use class "1" for all fg boxes if using class_agnostic_bbox_reg
     if cfg.MODEL.CLS_AGNOSTIC_BBOX_REG:
         labels.clip(max=1, out=labels)

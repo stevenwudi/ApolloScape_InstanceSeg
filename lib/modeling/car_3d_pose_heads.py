@@ -70,28 +70,32 @@ def fast_rcnn_car_cls_rot_losses(cls_score, rot_pred, car_cls, label_int32, quat
     device_id = cls_score.get_device()
     rois_label = Variable(torch.from_numpy(label_int32.astype('int64'))).cuda(device_id)
 
-    if cfg.CAR_CLS.SIM_MAT_LOSS:
-        shape_sim_mat_loss_mat = Variable(torch.from_numpy((1 - shape_sim_mat).astype('float32'))).cuda(device_id)
-        unique_modes = np.array(cfg.TRAIN.CAR_MODELS)
-        car_ids = label_int32.astype('int64')
-        loss_car_cls_total = Variable(torch.tensor(0.)).cuda(device_id)
-        for i in range(len(car_ids)):
-            pred_car_id = torch.argmax(car_cls[i])
-            gt_car_id = unique_modes[car_ids[i]]
-            loss = shape_sim_mat_loss_mat[gt_car_id, pred_car_id]
-            loss_car_cls_total += loss.sum()
+    if cfg.CAR_CLS.CLS_LOSS:
+        if cfg.CAR_CLS.SIM_MAT_LOSS:
+            shape_sim_mat_loss_mat = Variable(torch.from_numpy((1 - shape_sim_mat).astype('float32'))).cuda(device_id)
+            unique_modes = np.array(cfg.TRAIN.CAR_MODELS)
+            car_ids = label_int32.astype('int64')
+            loss_car_cls_total = Variable(torch.tensor(0.)).cuda(device_id)
+            for i in range(len(car_ids)):
+                pred_car_id = torch.argmax(car_cls[i])
+                gt_car_id = unique_modes[car_ids[i]]
+                loss = shape_sim_mat_loss_mat[gt_car_id, pred_car_id]
+                loss_car_cls_total += loss.sum()
 
-            loss_cls = loss_car_cls_total / len(cls_score)
-    else:
-        if len(ce_weight):
-            ce_weight = Variable(torch.from_numpy(np.array(ce_weight)).float()).cuda(device_id)
-            loss_cls = F.cross_entropy(cls_score, rois_label, ce_weight)
+                loss_cls = loss_car_cls_total / len(cls_score)
         else:
-            loss_cls = F.cross_entropy(cls_score, rois_label)
+            if len(ce_weight):
+                ce_weight = Variable(torch.from_numpy(np.array(ce_weight)).float()).cuda(device_id)
+                loss_cls = F.cross_entropy(cls_score, rois_label, ce_weight)
+            else:
+                loss_cls = F.cross_entropy(cls_score, rois_label)
 
-    # class accuracy
-    cls_preds = cls_score.max(dim=1)[1].type_as(rois_label)
-    accuracy_cls = cls_preds.eq(rois_label).float().mean(dim=0)
+        # class accuracy
+        cls_preds = cls_score.max(dim=1)[1].type_as(rois_label)
+        accuracy_cls = cls_preds.eq(rois_label).float().mean(dim=0)
+    else:
+        loss_cls = Variable(torch.from_numpy(np.array(0).astype('float32'))).cuda(device_id)
+        accuracy_cls = rois_label
 
     # loss rot
     quaternions = Variable(torch.from_numpy(quaternions.astype('float32'))).cuda(device_id)

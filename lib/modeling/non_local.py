@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+from core.config import cfg
 
 
 class _NonLocalBlockND(nn.Module):
@@ -107,6 +108,9 @@ class _NonLocalBlockND(nn.Module):
         theta_x = theta_x.permute(0, 2, 1)
         phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
         f = torch.matmul(theta_x, phi_x)
+        if cfg.FPN.NON_LOCAL_WEIGHTED:
+            f = f / (f.size()[-1] ** 0.5)
+
         f_div_C = F.softmax(f, dim=-1)
 
         # (b, thw, thw)dot(b, thw, 0.5c) = (b, thw, 0.5c)->(b, 0.5c, t, h, w)->(b, c, t, h, w)

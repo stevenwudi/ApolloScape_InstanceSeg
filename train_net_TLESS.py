@@ -1,7 +1,7 @@
 import argparse
 import os
-#os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2, 3'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import sys
 import pickle
@@ -111,13 +111,13 @@ def main():
     # Some manual adjustment for the ApolloScape dataset parameters here
     cfg.OUTPUT_DIR = args.output_dir
     cfg.TRAIN.DATASETS = 'TLESS'
-    cfg.MODEL.NUM_CLASSES = 30
+    cfg.MODEL.NUM_CLASSES = 30 + 1
 
     # We have only one class for all CAD models
     cfg.MODEL.NUMBER_CARS = 1
     cfg.TRAIN.MIN_AREA = 196   # 14*14
     cfg.TRAIN.USE_FLIPPED = False  # Currently I don't know how to handle the flipped case
-    cfg.TRAIN.IMS_PER_BATCH = 1
+    cfg.TRAIN.IMS_PER_BATCH = 20
 
     cfg.NUM_GPUS = torch.cuda.device_count()
     effective_batch_size = cfg.TRAIN.IMS_PER_BATCH * cfg.NUM_GPUS * args.iter_size
@@ -362,9 +362,9 @@ def main():
                         input_data[key] = list(map(Variable, input_data[key]))
 
                 net_outputs = maskRCNN(**input_data)
-
-                net_outputs['losses']['loss_car_cls'] *= cfg.CAR_CLS.CAR_CLS_LOSS_BETA
-                net_outputs['losses']['loss_rot'] *= cfg.CAR_CLS.ROT_LOSS_BETA
+                if cfg.MODEL.CAR_CLS_HEAD_ON:
+                    net_outputs['losses']['loss_car_cls'] *= cfg.CAR_CLS.CAR_CLS_LOSS_BETA
+                    net_outputs['losses']['loss_rot'] *= cfg.CAR_CLS.ROT_LOSS_BETA
                 if cfg.MODEL.TRANS_HEAD_ON:
                     net_outputs['losses']['loss_trans'] *= cfg.TRANS_HEAD.TRANS_LOSS_BETA
 
@@ -372,18 +372,18 @@ def main():
 
                 # start training
                 # loss_car_cls: 2.233790, loss_rot: 0.296853, loss_trans: ~100
-                loss = net_outputs['losses']['loss_car_cls'] + net_outputs['losses']['loss_rot']
+                if not cfg.TRAIN.FREEZE_CONV_BODY and not cfg.TRAIN.FREEZE_RPN and not cfg.TRAIN.FREEZE_FPN:
+                    loss = net_outputs['total_loss_conv']
+                if cfg.MODEL.CAR_CLS_HEAD_ON:
+                    loss += net_outputs['losses']['loss_car_cls'] + net_outputs['losses']['loss_rot']
                 if cfg.MODEL.TRANS_HEAD_ON:
                     loss += net_outputs['losses']['loss_trans']
                 if cfg.MODEL.LOSS_3D_2D_ON:
                     loss += net_outputs['losses']['UV_projection_loss']
-                if not cfg.TRAIN.FREEZE_CONV_BODY and not cfg.TRAIN.FREEZE_RPN and not cfg.TRAIN.FREEZE_FPN:
-                    loss += net_outputs['total_loss_conv']
 
                 loss.backward()
             optimizer.step()
             training_stats.IterToc()
-
             training_stats.LogIterStats(step, lr, warmup_factor_trans)
 
             if (step + 1) % CHECKPOINT_PERIOD == 0:

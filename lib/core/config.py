@@ -46,6 +46,9 @@ __C.TRAIN.SCALES = (600, )
 # Finetune weight, it's dependant upon the test result ( or the instance count.... it's a bit hack)
 __C.TRAIN.CE_FINETUNE_WIGHT = (1, 1.20,  6.4,  14.35, 1., 2.48,  1.534,  4.088)
 
+#  The classes we care about in the box head, for example, in WAD, car cls is 4
+__C.TRAIN.CARE_CLS = list([4])
+
 # Finetune Car Class weight (Inverse frequencis of cars)
 __C.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT = list()
 
@@ -487,6 +490,9 @@ __C.MODEL.NON_LOCAL_TEST = False
 __C.MODEL.LOSS_3D_2D_ON = False
 
 
+# Z mean for model rendering # used for 6DB
+__C.MODEL.Z_MEAN = 0
+
 # Indicates the model makes keypoint predictions (as in Mask R-CNN for
 # keypoints)
 __C.MODEL.KEYPOINTS_ON = False
@@ -788,10 +794,14 @@ __C.FPN.USE_GN = False
 
 # Use Non local block (right before the last residual block of res4)
 __C.FPN.NON_LOCAL = False
+
+# Use Non local block (weighted)
+# Attention Is All You Need: 1/sqrt(d)
+__C.FPN.NON_LOCAL_WEIGHTED = False
+
 # ---------------------------------------------------------------------------- #
 # CAR_CLS options
 # ---------------------------------------------------------------------------- #
-
 __C.CAR_CLS = AttrDict()
 
 # The type of RoI head to use for bounding box classification and regression
@@ -832,6 +842,9 @@ __C.CAR_CLS.SIM_MAT_LOSS = False
 
 # Normalise quaternion output to unit length.
 __C.CAR_CLS.ROT_LOSS = 'L1'  # ['MSE', 'L1', 'ARCCOS', 'HUBER']
+
+# Whether we will have class loss in the second head
+__C.CAR_CLS.CLS_LOSS = True
 
 # Rotational Huber treshold: we care more about the inside, stabilise the learning process
 __C.CAR_CLS.ROT_HUBER_THRESHOLD = 5

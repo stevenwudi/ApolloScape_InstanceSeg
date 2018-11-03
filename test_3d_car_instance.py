@@ -8,7 +8,7 @@ import sys
 import matplotlib
 matplotlib.use('Agg')
 import torch
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 import _init_paths  # pylint: disable=unused-import
 from core.config import cfg, merge_cfg_from_file, merge_cfg_from_list, assert_and_infer_cfg
@@ -25,9 +25,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     ######################## cfg #####################
     parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head.yaml', help='Config file for training (and optionally testing)')
-    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep09-23-42-21_N606-TITAN32_step/ckpt/model_step56534.pth', help='checkpoint path to load')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local/Oct03-12-44-22_N606-TITAN32_step/ckpt/model_step55277.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local/Nov01-12-19-36_N606-TITAN32_step/ckpt/model_step55643.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local/Oct03-12-44-22_N606-TITAN32_step/ckpt/model_step55277.pth', help='checkpoint path to load')
 
     ######################## ckpt #####################
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
@@ -38,7 +37,7 @@ def parse_args():
     parser.add_argument('--multi-gpu-testing', help='using multiple gpus for inference', default=False, action='store_true')
     parser.add_argument('--vis', default=False,  dest='vis', help='visualize detections', action='store_true')
     parser.add_argument('--list_flag', default='test', help='Choosing between [val, test]')
-    parser.add_argument('--iou_ignore_threshold', default=None, help='Filter out by this iou')
+    parser.add_argument('--iou_ignore_threshold', default=0.5, help='Filter out by this iou')
     return parser.parse_args()
 
 
@@ -84,15 +83,15 @@ if __name__ == '__main__':
 
     # Wudi hard coded the following range
     if args.list_flag == 'test':
-        args.range = [0, 1041]
-        # i = 7
-        # args.range = [i*125, (i+1)*125]
+        #args.range = [0, 1041]
+        i = 0
+        args.range = [i*125, (i+1)*125]
         #args.range = [1000, 1041]
     elif args.list_flag == 'val':
-        args.range = [0, 206]
-        # i = 4
-        # args.range = [i*50, (i+1)*50]
-        # args.range = [200, 206]
+        # args.range = [0, 206]
+        #i = 4
+        #args.range = [i*50, (i+1)*50]
+        args.range = [205, 206]
     elif args.list_flag == 'train':
         args.range = [0, 3888]
 

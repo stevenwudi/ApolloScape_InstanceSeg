@@ -96,7 +96,6 @@ class fpn(nn.Module):
             self.non_local_top = NONLocalBlock2D(in_channels=fpn_dim_lateral[0], sub_sample=False)
             self.conv_top = nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0)
         else:
-
             if cfg.FPN.USE_GN:
                 self.conv_top = nn.Sequential(
                     nn.Conv2d(fpn_dim_lateral[0], fpn_dim, 1, 1, 0, bias=False),

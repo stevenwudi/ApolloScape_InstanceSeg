@@ -192,10 +192,6 @@ class Generalized_RCNN(nn.Module):
 
         rpn_ret = self.RPN(blob_conv, im_info, roidb)
 
-        # if self.training:
-        #     # can be used to infer fg/bg ratio
-        #     return_dict['rois_label'] = rpn_ret['labels_int32']
-
         if cfg.FPN.FPN_ON:
             # Retain only the blobs that will be used for RoI heads. `blob_conv` may include
             # extra blobs that are used for RPN proposals, but not for RoI heads.
@@ -240,7 +236,8 @@ class Generalized_RCNN(nn.Module):
             return_dict['metrics']['accuracy_cls'] = accuracy_cls
 
             # we only use the car cls
-            car_cls_int = 4
+            if np.sum(rpn_ret['labels_int32']) <= 0:
+                print("ZERO POSITIVE")
             if cfg.MODEL.CAR_CLS_HEAD_ON:
                 if getattr(self.car_cls_Head, 'SHARE_RES5', False):
                     # TODO: add thos shared_res5 module
@@ -251,52 +248,59 @@ class Generalized_RCNN(nn.Module):
                     # car classification loss, we only fine tune the labelled cars
 
                 # we only use the car cls
-                car_idx = np.where(rpn_ret['labels_int32'] == car_cls_int)
+                care_idx = np.where(list(map(lambda x: x in cfg.TRAIN.CARE_CLS, rpn_ret['labels_int32'])))
                 if len(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT):
                     ce_weight = np.array(cfg.TRAIN.CE_CAR_CLS_FINETUNE_WIGHT)
                 else:
-                    ce_weight = None
+                    ce_weight = []
 
-                loss_car_cls, loss_rot, accuracy_car_cls = car_3d_pose_heads.fast_rcnn_car_cls_rot_losses(car_cls_score[car_idx],
-                                                                                                          rot_pred[car_idx],
-                                                                                                          car_cls[car_idx],
-                                                                                                          rpn_ret['car_cls_labels_int32'][car_idx],
-                                                                                                          rpn_ret['quaternions'][car_idx],
+                loss_car_cls, loss_rot, accuracy_car_cls = car_3d_pose_heads.fast_rcnn_car_cls_rot_losses(car_cls_score[care_idx],
+                                                                                                          rot_pred[care_idx],
+                                                                                                          car_cls[care_idx],
+                                                                                                          rpn_ret['car_cls_labels_int32'][care_idx],
+                                                                                                          rpn_ret['quaternions'][care_idx],
                                                                                                           ce_weight,
                                                                                                           shape_sim_mat=self.shape_sim_mat)
 
                 return_dict['losses']['loss_car_cls'] = loss_car_cls
                 return_dict['losses']['loss_rot'] = loss_rot
-                return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls
-                return_dict['metrics']['shape_sim'] = shape_sim(car_cls[car_idx].data.cpu().numpy(), self.shape_sim_mat, rpn_ret['car_cls_labels_int32'][car_idx].astype('int64'))
-                return_dict['metrics']['rot_diff_degree'] = rot_sim(rot_pred[car_idx].data.cpu().numpy(), rpn_ret['quaternions'][car_idx])
+                if cfg.CAR_CLS.CLS_LOSS:
+                    return_dict['metrics']['accuracy_car_cls'] = accuracy_car_cls
+                    return_dict['metrics']['shape_sim'] = shape_sim(car_cls[care_idx].data.cpu().numpy(), self.shape_sim_mat, rpn_ret['car_cls_labels_int32'][care_idx].astype('int64'))
+                return_dict['metrics']['rot_diff_degree'] = rot_sim(rot_pred[care_idx].data.cpu().numpy(), rpn_ret['quaternions'][care_idx])
 
             if cfg.MODEL.TRANS_HEAD_ON:
                 pred_boxes = car_3d_pose_heads.bbox_transform_pytorch(rpn_ret['rois'], bbox_pred, im_info,
                                                                       cfg.MODEL.BBOX_REG_WEIGHTS)
-                car_idx = np.where(rpn_ret['labels_int32'] == car_cls_int)
+                care_idx = np.where(list(map(lambda x: x in cfg.TRAIN.CARE_CLS, rpn_ret['labels_int32'])))
 
                 # Build translation head heres from the bounding box
                 if cfg.TRANS_HEAD.INPUT_CONV_BODY:
-                    pred_boxes_car = pred_boxes[:, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
+                    pred_boxes_tmp = [pred_boxes[i, 4 * rpn_ret['labels_int32'][i]:4 * (rpn_ret['labels_int32'][i] + 1)] for i in range(rpn_ret['labels_int32'].shape[0])]
+                    pred_boxes_car = torch.stack(pred_boxes_tmp).squeeze(dim=0)
                     car_trans_feat = self.car_trans_Head(blob_conv, rpn_ret, pred_boxes_car)
                     car_trans_pred = self.car_trans_Outs(car_trans_feat)
-                    car_trans_pred = car_trans_pred[car_idx]
+                    car_trans_pred = car_trans_pred[care_idx]
                 elif cfg.TRANS_HEAD.INPUT_TRIPLE_HEAD:
-                    pred_boxes_car = pred_boxes[:, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
+                    pred_boxes_tmp = [pred_boxes[i, 4 * rpn_ret['labels_int32'][i]:4 * (rpn_ret['labels_int32'][i] + 1)] for i in range(rpn_ret['labels_int32'].shape[0])]
+                    pred_boxes_car = torch.stack(pred_boxes_tmp).squeeze(dim=0)
                     car_trans_feat = self.car_trans_Head(pred_boxes_car)
                     car_trans_pred = self.car_trans_Outs(car_trans_feat, car_cls_rot_feat)
-                    car_trans_pred = car_trans_pred[car_idx]
+                    car_trans_pred = car_trans_pred[care_idx]
                 else:
-                    pred_boxes_car = pred_boxes[car_idx, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
+                    car_cls_int = 4
+                    pred_boxes_car = pred_boxes[care_idx, 4 * car_cls_int:4 * (car_cls_int + 1)].squeeze(dim=0)
                     car_trans_feat = self.car_trans_Head(pred_boxes_car)
                     car_trans_pred = self.car_trans_Outs(car_trans_feat)
 
-                label_trans = rpn_ret['car_trans'][car_idx]
+                label_trans = rpn_ret['car_trans'][care_idx]
+                if cfg.MODEL.Z_MEAN > 0:
+                    label_trans = label_trans / 100
+                    #label_trans[:, -1] = label_trans[:, -1] - 600
                 loss_trans = car_3d_pose_heads.car_trans_losses(car_trans_pred, label_trans)
                 return_dict['losses']['loss_trans'] = loss_trans
                 return_dict['metrics']['trans_diff_meter'], return_dict['metrics']['trans_thresh_per'] = \
-                    trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][car_idx],
+                    trans_sim(car_trans_pred.data.cpu().numpy(), rpn_ret['car_trans'][care_idx],
                               cfg.TRANS_HEAD.TRANS_MEAN, cfg.TRANS_HEAD.TRANS_STD)
 
             # A 3D to 2D projection loss
@@ -304,14 +308,14 @@ class Generalized_RCNN(nn.Module):
                 # During the mesh generation, using GT(True) or predicted(False) Car ID
                 if cfg.LOSS_3D_2D.MESH_GEN_USING_GT:
                     # Acquire car id
-                    car_ids = rpn_ret['car_cls_labels_int32'][car_idx].astype('int64')
+                    car_ids = rpn_ret['car_cls_labels_int32'][care_idx].astype('int64')
                 else:
                     # Using the predicted car id
                     print("Not properly implemented for pytorch")
-                    car_ids = car_cls_score[car_idx].max(dim=1)
+                    car_ids = car_cls_score[care_idx].max(dim=1)
                 # Get mesh vertices and generate loss
                 UV_projection_loss = plane_projection_loss(car_trans_pred, label_trans,
-                                                      rot_pred[car_idx], rpn_ret['quaternions'][car_idx],
+                                                      rot_pred[care_idx], rpn_ret['quaternions'][care_idx],
                                                       car_ids, im_info,
                                                       self.car_models, self.intrinsic_mat, self.car_names)
 

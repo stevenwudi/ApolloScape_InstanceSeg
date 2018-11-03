@@ -6,10 +6,7 @@ MODEL:
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
   TRANS_HEAD_ON: True
-  NON_LOCAL_TEST: False # !!!!!We will only collect the f_div_C during test (single GPU only)
-  # For not weighted W_theta * W_phi.t() :
-  # W.mean() = 1.00000e-04 * 8.2295
-  # W.std() =  1.00000e-02 * 3.3999)
+  NON_LOCAL_TEST: False
 
 NUM_GPUS: 4
 SOLVER:
@@ -21,12 +18,15 @@ SOLVER:
   STEPS: [0, 20000, 40000]
   WARM_UP_ITERS: 1000
   WARM_UP_FACTOR_TRANS: 0.01  #Warm up factor for 3d car translation
+
 FPN:
   FPN_ON: True
   FPN_LOSS_SHOW: False
   MULTILEVEL_ROIS: True
   MULTILEVEL_RPN: True
   NON_LOCAL: True
+  NON_LOCAL_WEIGHTED: True   # Use input/sqrt(dim_in)
+
 FAST_RCNN:
   ROI_BOX_HEAD: fast_rcnn_heads.roi_2mlp_head
   ROI_XFORM_METHOD: RoIAlign
@@ -70,6 +70,7 @@ MRCNN:
   ROI_XFORM_SAMPLING_RATIO: 2  # default 0
   DILATION: 1  # default 2
   CONV_INIT: MSRAFill  # default GaussianFill
+
 TRAIN:
   #SCALES: (800,)
 #  SCALES: (1600, 2000)  # If it's 0, means that we don't resize it
@@ -86,7 +87,6 @@ TRAIN:
         4.65,  6.62, 11.54,  0.6 ,  6.73, 29.48,  7.82,  5.55, 12.36,
        25.85,  8.63,  6.49,  4.13,  2.6 ,  6.3 , 10.84]  # Find tune car according to it's appearance
   CAR_MODELS: [2,  6,  7,  8,  9, 12, 14, 16, 18, 19, 20, 23, 25, 27, 28, 31, 32, 35, 37,  40, 43, 46, 47, 48, 50, 51, 54, 56, 60, 61, 66, 70, 71, 76]
-
   FREEZE_CONV_BODY: False
   FREEZE_RPN: False
   FREEZE_FPN: False

@@ -177,7 +177,7 @@ def filter_for_training_TLESS(roidb, cache_filepath_filtered, num_classes):
         filtered_entry['gt_classes'] = np.ones(1) * model_num
         filtered_entry['gt_classes'] = filtered_entry['gt_classes'].astype(np.int8)
         filtered_entry['is_crowd'] = np.zeros(1)
-
+        filtered_entry['car_cat_classes'] = np.ones(1)   # historical code.
         # We only add the images with valid instances
         if len(entry['seg_areas']) > 0 and len(valid_idx) > 0:
             filtered_roidb.append(filtered_entry)

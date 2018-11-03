@@ -106,8 +106,9 @@ class TrainingStats(object):
         """Update tracked iteration statistics. for car 3d"""
         # Following code is saved for compatability of train_net.py and iter_size==1
         total_loss = 0
-        loss_names = ['loss_car_cls', 'loss_rot']
-
+        loss_names = []
+        if cfg.MODEL.CAR_CLS_HEAD_ON:
+            loss_names = ['loss_car_cls', 'loss_rot']
         if cfg.MODEL.TRANS_HEAD_ON:
             loss_names = ['loss_car_cls', 'loss_rot', 'loss_trans']
         if cfg.MODEL.LOSS_3D_2D_ON:
@@ -131,10 +132,14 @@ class TrainingStats(object):
                 loss_data = loss.data[0]
                 model_out['losses'][k] = loss
                 self.smoothed_losses[k].AddValue(loss_data)
+        if cfg.MODEL.CAR_CLS_HEAD_ON:
+            model_out['total_loss'] = total_loss + total_loss_conv # Add the total loss for back propagation
+        else:
+            model_out['total_loss'] = total_loss_conv  # Add the total loss for back propagation
 
-        model_out['total_loss'] = total_loss + total_loss_conv # Add the total loss for back propagation
-        model_out['total_loss_conv'] = total_loss_conv  # Add the total loss for back propagation
-        self.smoothed_total_loss.AddValue(total_loss.data[0])
+        model_out['total_loss_conv'] = total_loss_conv
+        if cfg.MODEL.CAR_CLS_HEAD_ON:# Add the total loss for back propagation
+            self.smoothed_total_loss.AddValue(total_loss.data[0])
 
         for k, metric in model_out['metrics'].items():
             metric = metric.mean(dim=0, keepdim=True)
