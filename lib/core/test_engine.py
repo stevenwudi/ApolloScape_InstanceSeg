@@ -472,8 +472,9 @@ def test_net_Car3D(
             extend_results(i, all_boxes, cls_boxes_i)
 
             # We draw the grid overlap with an image here
-            f_div_C_plot = f_div_C.copy()
             if False:
+                f_div_C_plot = f_div_C.copy()
+
                 grid_size = 32  # This is the res5 output space
                 fig = plt.figure()
                 ax1 = fig.add_subplot(1, 2, 1)
@@ -483,23 +484,23 @@ def test_net_Car3D(
 
                 # We choose the point here:
                 # x, y = int(1757/grid_size), int(1040/grid_size)   # val 164
-                x, y = int(1857/grid_size), int(725/grid_size)
+                x, y = int(1370/grid_size), int(1802/grid_size)
 
                 # draw a patch hre
-                rect = patches.Rectangle((y*grid_size, x*grid_size), grid_size, grid_size,
+                rect = patches.Rectangle((x*grid_size, y*grid_size), grid_size, grid_size,
                                          linewidth=1, edgecolor='r', facecolor='r')
                 ax1.add_patch(rect)
 
-                att_point_map = f_div_C_plot[106*x+y, :].copy()
+                att_point_map = f_div_C_plot[106*x+y, :]
                 att_point_map = np.reshape(att_point_map, (85, 106))
                 ax2.imshow(att_point_map, cmap='jet')
 
-                # we draw 10 arrows
+                # we draw 20 arrows
                 for i in range(20):
                     x_max, y_max = np.unravel_index(att_point_map.argmax(), att_point_map.shape)
                     v = att_point_map[x_max, y_max]
                     att_point_map[x_max, y_max] = 0
-                    ax1.arrow(y*grid_size, x*grid_size, (y_max-y)*grid_size, (x_max-x)*grid_size,
+                    ax1.arrow(x*grid_size, y*grid_size, (y_max-x)*grid_size, (x_max-y)*grid_size,
                               fc="r", ec="r", head_width=(10-i)*grid_size/2, head_length=grid_size)
 
 

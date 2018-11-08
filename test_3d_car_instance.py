@@ -8,7 +8,7 @@ import sys
 import matplotlib
 #matplotlib.use('Agg')
 import torch
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import _init_paths  # pylint: disable=unused-import
 from core.config import cfg, merge_cfg_from_file, merge_cfg_from_list, assert_and_infer_cfg
@@ -83,14 +83,14 @@ if __name__ == '__main__':
     # Wudi hard coded the following range
     if args.list_flag == 'test':
         #args.range = [0, 1041]
-        i = 0
+        i = 1
         args.range = [i*125, (i+1)*125]
         #args.range = [1000, 1041]
     elif args.list_flag == 'val':
         # args.range = [0, 206]
-        #i = 4
-        #args.range = [i*50, (i+1)*50]
-        args.range = [4, 206]
+        i = 3
+        args.range = [i*50, (i+1)*50]
+        args.range = [54, 206]
     elif args.list_flag == 'train':
         args.range = [0, 3888]
 

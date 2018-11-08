@@ -10,6 +10,7 @@ MODEL:
   # For not weighted W_theta * W_phi.t() :
   # W.mean() = 1.00000e-07 * 3.3739
   # W.std() =  1.00000e-04 * 4.1553)
+
 NUM_GPUS: 4
 SOLVER:
   WEIGHT_DECAY: 0.0001
