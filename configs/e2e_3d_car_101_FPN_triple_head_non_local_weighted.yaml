@@ -6,8 +6,10 @@ MODEL:
   MASK_TRAIN_ON: False   # Whether we train the mask
   CAR_CLS_HEAD_ON: True
   TRANS_HEAD_ON: True
-  NON_LOCAL_TEST: False
-
+  NON_LOCAL_TEST: True
+  # For not weighted W_theta * W_phi.t() :
+  # W.mean() = 1.00000e-07 * 3.3739
+  # W.std() =  1.00000e-04 * 4.1553)
 NUM_GPUS: 4
 SOLVER:
   WEIGHT_DECAY: 0.0001
@@ -106,7 +108,7 @@ TEST:
     ENABLED: True
     VOTE_TH: 0.9
   BBOX_AUG:
-    ENABLED: True
+    ENABLED: False
     SCORE_HEUR: UNION
     COORD_HEUR: UNION
     H_FLIP: True
