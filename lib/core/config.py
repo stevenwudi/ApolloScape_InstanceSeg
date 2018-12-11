@@ -176,7 +176,13 @@ __C.TRAIN.FREEZE_CONV_BODY = False
 __C.TRAIN.FREEZE_RPN = False
 
 # Freeze the FPN class and box head during training if set to True
-__C.TRAIN.FREEZE_FPN =  False
+__C.TRAIN.FREEZE_FPN = False
+
+# Use ignore mask to filter out the training background is set to True
+__C.TRAIN.IGNORE_MASK = False
+
+# Homoscedastic for optimal weighting in learning
+__C.TRAIN.HOMOSCEDASTIC = False
 # ---------------------------------------------------------------------------- #
 # Data loader options
 # ---------------------------------------------------------------------------- #

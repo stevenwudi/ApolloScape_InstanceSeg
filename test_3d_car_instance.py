@@ -8,7 +8,7 @@ import sys
 import matplotlib
 #matplotlib.use('Agg')
 import torch
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 import _init_paths  # pylint: disable=unused-import
 from core.config import cfg, merge_cfg_from_file, merge_cfg_from_list, assert_and_infer_cfg
@@ -24,8 +24,13 @@ def parse_args():
     """Parse in command line arguments"""
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     ######################## cfg #####################
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local_weighted.yaml', help='Config file for training (and optionally testing)')
-    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local_weighted/Nov03-21-05-13_N606-TITAN32_step/ckpt/model_step46952.pth', help='checkpoint path to load')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local_weighted.yaml', help='Config file for training (and optionally testing)')
+    #parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head.yaml', help='Config file for training (and optionally testing)')
+
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local/Oct03-12-44-22_N606-TITAN32_step/ckpt/model_step55277.pth', help='checkpoint path to load')
+    #parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local/Oct03-12-44-22_N606-TITAN32_step/ckpt/model_step55277.pth', help='checkpoint path to load')
+    parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head/Sep09-23-42-21_N606-TITAN32_step/ckpt/model_step56534.pth', help='checkpoint path to load')
 
     ######################## ckpt #####################
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
@@ -90,9 +95,9 @@ if __name__ == '__main__':
         # args.range = [0, 206]
         i = 3
         args.range = [i*50, (i+1)*50]
-        args.range = [54, 206]
+        args.range = [0, 206]
     elif args.list_flag == 'train':
-        args.range = [0, 3888]
+        args.range = [4, 3888]
 
     run_inference(
         args,

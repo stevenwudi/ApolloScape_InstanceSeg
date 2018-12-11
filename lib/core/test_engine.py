@@ -403,7 +403,7 @@ def test_net_Car3D(
     if cfg.MODEL.TRANS_HEAD_ON:
         json_dir = os.path.join(output_dir, 'json_'+args.list_flag+'_trans')
     else:
-        json_dir = os.path.join(output_dir, 'json_d'+args.list_flag)
+        json_dir = os.path.join(output_dir, 'json_'+args.list_flag)
 
     json_dir += '_iou_' + str(args.iou_ignore_threshold)
     if not cfg.TEST.BBOX_AUG.ENABLED:
@@ -474,7 +474,6 @@ def test_net_Car3D(
             # We draw the grid overlap with an image here
             if False:
                 f_div_C_plot = f_div_C.copy()
-
                 grid_size = 32  # This is the res5 output space
                 fig = plt.figure()
                 ax1 = fig.add_subplot(1, 2, 1)
@@ -484,25 +483,24 @@ def test_net_Car3D(
 
                 # We choose the point here:
                 # x, y = int(1757/grid_size), int(1040/grid_size)   # val 164
-                x, y = int(1370/grid_size), int(1802/grid_size)
+                x, y = int(1830/grid_size), int(1855/grid_size)
 
                 # draw a patch hre
-                rect = patches.Rectangle((x*grid_size, y*grid_size), grid_size, grid_size,
-                                         linewidth=1, edgecolor='r', facecolor='r')
+                rect = patches.Rectangle((x*grid_size-grid_size, y*grid_size-grid_size), grid_size*3, grid_size*3,
+                                         linewidth=1, edgecolor='m', facecolor='m')
                 ax1.add_patch(rect)
-
-                att_point_map = f_div_C_plot[106*x+y, :]
+                #att_point_map = f_div_C_plot[106*x+y, :]
+                att_point_map = f_div_C_plot[106*y+x, :]
                 att_point_map = np.reshape(att_point_map, (85, 106))
                 ax2.imshow(att_point_map, cmap='jet')
 
                 # we draw 20 arrows
-                for i in range(20):
+                for i in range(10):
                     x_max, y_max = np.unravel_index(att_point_map.argmax(), att_point_map.shape)
                     v = att_point_map[x_max, y_max]
                     att_point_map[x_max, y_max] = 0
                     ax1.arrow(x*grid_size, y*grid_size, (y_max-x)*grid_size, (x_max-y)*grid_size,
                               fc="r", ec="r", head_width=(10-i)*grid_size/2, head_length=grid_size)
-
 
             if i % 10 == 0:  # Reduce log file size
                 ave_total_time = np.sum([t.average_time for t in timers.values()])
@@ -563,6 +561,21 @@ def test_net_Car3D(
     if os.path.exists(det_file):
         obj = load_object(det_file)
         all_boxes = obj['all_boxes']
+
+    # this is a hack
+    if False:
+
+        import glob
+        det_files = sorted(glob.glob(args.output_dir+'/detection_range_*.pkl'))
+        det_files = [det_files[4], det_files[1], det_files[2], det_files[3]]
+        obj = load_object(det_files[0])
+        all_boxes = obj['all_boxes']
+        for df in det_files:
+            obj = load_object(df)
+            boxes = obj['all_boxes']
+            for i in range(len(boxes)):
+                all_boxes[i] = all_boxes[i] + boxes[i]
+        save_object(dict(all_boxes=all_boxes), det_file)
 
     results = task_evaluation.evaluate_boxes(dataset, all_boxes, output_dir, args)
 

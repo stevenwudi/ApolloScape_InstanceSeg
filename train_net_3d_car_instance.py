@@ -42,7 +42,7 @@ def parse_args():
     """Parse input arguments"""
     parser = argparse.ArgumentParser(description='Train a X-RCNN network')
     # The following cfg and ckpt will be changed accordingly.
-    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local_weighted.yaml', help='Config file for training (and optionally testing)')
+    parser.add_argument('--cfg', dest='cfg_file', default='./configs/e2e_3d_car_101_FPN_triple_head_non_local_weighted_homoscedastic.yaml', help='Config file for training (and optionally testing)')
     parser.add_argument('--load_ckpt', default='/media/samsumg_1tb/ApolloScape/ApolloScape_InstanceSeg/e2e_3d_car_101_FPN_triple_head_non_local_weighted/Nov03-21-05-13_N606-TITAN32_step/ckpt/model_step46952.pth', help='checkpoint path to load')
 
     parser.add_argument('--dataset', dest='dataset', default='ApolloScape', help='Dataset to use')
@@ -317,7 +317,6 @@ def main():
         logger.info('Training starts !')
         step = args.start_step
         for step in range(args.start_step, cfg.SOLVER.MAX_ITER):
-
             # Warm up
             if step < cfg.SOLVER.WARM_UP_ITERS:
                 method = cfg.SOLVER.WARM_UP_METHOD
@@ -365,15 +364,15 @@ def main():
 
                 net_outputs = maskRCNN(**input_data)
 
-                net_outputs['losses']['loss_car_cls'] *= cfg.CAR_CLS.CAR_CLS_LOSS_BETA
-                net_outputs['losses']['loss_rot'] *= cfg.CAR_CLS.ROT_LOSS_BETA
-                if cfg.MODEL.TRANS_HEAD_ON:
-                    net_outputs['losses']['loss_trans'] *= cfg.TRANS_HEAD.TRANS_LOSS_BETA
+                if not cfg.TRAIN.HOMOSCEDASTIC:
+                    net_outputs['losses']['loss_car_cls'] *= cfg.CAR_CLS.CAR_CLS_LOSS_BETA
+                    net_outputs['losses']['loss_rot'] *= cfg.CAR_CLS.ROT_LOSS_BETA
+                    if cfg.MODEL.TRANS_HEAD_ON:
+                        net_outputs['losses']['loss_trans'] *= cfg.TRANS_HEAD.TRANS_LOSS_BETA
 
                 training_stats.UpdateIterStats_car_3d(net_outputs)
 
                 # start training
-                # loss_car_cls: 2.233790, loss_rot: 0.296853, loss_trans: ~100
                 loss = net_outputs['losses']['loss_car_cls'] + net_outputs['losses']['loss_rot']
                 if cfg.MODEL.TRANS_HEAD_ON:
                     loss += net_outputs['losses']['loss_trans']

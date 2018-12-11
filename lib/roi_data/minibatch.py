@@ -31,7 +31,11 @@ def get_minibatch(roidb, valid_keys):
     blobs = {k: [] for k in get_minibatch_blob_names()}
 
     # Get the input image blob
-    im_blob, im_scales = _get_image_blob(roidb)
+    if cfg.TRAIN.IGNORE_MASK:
+        im_blob, im_ig_blob, im_scales = _get_image_blob(roidb)
+        blobs['im_ig_blob'] = im_ig_blob
+    else:
+        im_blob, im_scales = _get_image_blob(roidb)
     blobs['data'] = im_blob
     if cfg.RPN.RPN_ON:
         # RPN-only or end-to-end Faster/Mask R-CNN
@@ -56,10 +60,15 @@ def _get_image_blob(roidb):
         target_size = np.random.randint(low=cfg.TRAIN.SCALES[0], high=cfg.TRAIN.SCALES[1], size=num_images)
 
     processed_ims = []
+    if cfg.TRAIN.IGNORE_MASK:
+        processed_ims_ig = []
     im_scales = []
     for i in range(num_images):
         im = cv2.imread(roidb[i]['image'])
         assert im is not None, 'Failed to read image \'{}\''.format(roidb[i]['image'])
+        if cfg.TRAIN.IGNORE_MASK:
+            cv2.imread(roidb[i]['image'])
+            im_ig = cv2.imread(roidb[i]['image'].replace('images', 'ignore_mask'))
         # If NOT using opencv to read in images, uncomment following lines
         # if len(im.shape) == 2:
         #     im = im[:, :, np.newaxis]
@@ -69,12 +78,21 @@ def _get_image_blob(roidb):
         # im = im[:, :, ::-1]
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
+            if cfg.TRAIN.IGNORE_MASK:
+                im_ig = im_ig[:, ::-1]
+
         #target_size = cfg.TRAIN.SCALES[scale_inds[i]]
         im, im_scale = blob_utils.prep_im_for_blob(im, cfg.PIXEL_MEANS, [target_size], cfg.TRAIN.MAX_SIZE)
+        if cfg.TRAIN.IGNORE_MASK:
+            im_ig_resized = cv2.resize(im_ig, None, None, fx=im_scale[0], fy=im_scale[0], interpolation=cv2.INTER_LINEAR)
+            processed_ims_ig.append(im_ig_resized)
         im_scales.append(im_scale[0])
         processed_ims.append(im[0])
 
     # Create a blob to hold the input images [n, c, h, w]
     blob = blob_utils.im_list_to_blob(processed_ims)
-
-    return blob, im_scales
+    if cfg.TRAIN.IGNORE_MASK:
+        blob_ig = blob_utils.im_list_to_blob(processed_ims_ig)
+        return blob, blob_ig, im_scales
+    else:
+        return blob, im_scales
