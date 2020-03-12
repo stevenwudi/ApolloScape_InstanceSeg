@@ -1,6 +1,6 @@
 #  6 DoF estimation network
 
-The Repo is no longer maintained, we have migrate the code to
+The Repo is no longer maintained, I have migrate the code to
 
 https://github.com/stevenwudi/Kaggle_PKU_Baidu
 
